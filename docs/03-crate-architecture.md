@@ -38,9 +38,9 @@ This crate is the system grammar. It must not import anything from the server or
 ## ludeme-server responsibilities
 
 - Axum route handlers for all entity CRUD
-- SQLx queries against PostgreSQL
+- SQLx queries against SQLite
 - Relationship edge creation and traversal
-- Search endpoint (full-text via tsvector; pgvector later)
+- Search endpoint (full-text via FTS5; JSON vector similarity later)
 - Session and moment storage
 - Static file serving for compiled WASM demo binaries
 - Publish state management and validation rules

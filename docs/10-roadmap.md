@@ -16,12 +16,24 @@
 - `ts-rs` generation pipeline from core types to TypeScript
 - `taxonomy/` TOML files for mechanic families, relation types, and confidence levels
 - Database migration for all entity tables and the relationship edges table
-- `ludeme-server` skeleton: Axum app boots, connects to Postgres, seeds taxonomy on startup
+- `ludeme-server` skeleton: Axum app boots, connects to SQLite, seeds taxonomy on startup
 - SvelteKit shell skeleton: routes exist, types imported from generated TS
 - One sample slice described end-to-end in the templates without inventing new fields
 - `fidelity-levels.toml` with decision criteria
 
 **Exit criterion:** A mechanic, a work, a demo brief, and a relationship edge can all be created via the API and retrieved without inventing new fields. The full entity graph for one demo slice exists in the database.
+
+**Progress:**
+
+- [x] `ludeme-core` crate with entity types and `GameEvent` enum
+- [x] `taxonomy/` TOML files for mechanic families, relation types, and fidelity levels
+- [x] Database migration for all entity tables and relationship edges
+- [x] `ludeme-server` skeleton: boots, connects to SQLite, seeds taxonomy
+- [x] SvelteKit shell skeleton: routes exist, static types in `types.ts`
+- [x] `fidelity-levels.toml` with decision criteria
+- [x] CRUD API endpoints for mechanics, works, demos, and edges
+- [x] One sample slice (Pong) existing end-to-end in the database
+- [ ] `ts-rs` generation pipeline from core types to TypeScript (deferred — manual `types.ts` in sync)
 
 ---
 
@@ -44,6 +56,20 @@
 - Release readiness checklist enforced on publish
 
 **Exit criterion:** At least three demos can be launched through the same shell and metadata model. A moment bookmark can be created from inside play and retrieved via the API. The play-to-note flow (see [UX Flows](09-ux-flows.md)) works end-to-end.
+
+**Progress:**
+
+- [x] First WASM demo compiled and served (pong-76)
+- [x] Home / Discover surface: browsable by mechanic family
+- [x] Play shell route exists with canvas embed and state machine overlay
+- [x] Session creation API endpoint
+- [x] Bookmark creation API endpoint
+- [ ] Demo Shell API contract: `SessionStart`, `SessionEnd`, `MomentEmit` events flowing from WASM to shell
+- [ ] Bookmark capture flow: shortcut → screenshot → moment form → saved bookmark
+- [ ] Collections: curated trails
+- [ ] Search: full-text across demo titles, mechanic names, work titles
+- [ ] Publish state management and release readiness checklist
+- [ ] At least two more playable demos
 
 ---
 
@@ -126,7 +152,7 @@
 
 - Mechanic lens overlays: visual highlights of hitboxes, trajectories, and collision zones rendered on the live canvas
 - Richer session analytics: completion rates, common moment-bookmark frames, param tuner usage patterns
-- Semantic search over mechanic definitions and observations (pgvector + embedding generation)
+- Semantic search over mechanic definitions and observations (embedding vectors stored as JSON, cosine similarity in app layer; Turso or Postgres if needed at scale)
 - Recommendation logic: "you played this mechanic demo, here are related demos and open observations"
 - Ghost comparison: overlay two input logs on the same replay to compare player behavior
 - Expert trail authoring: a designated trail type where expert replay + annotations + notes form a structured lesson

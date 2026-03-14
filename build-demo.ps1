@@ -6,9 +6,7 @@
 #   .\build-demo.ps1 maze-80
 #   .\build-demo.ps1 jump-feel
 #
-# Prerequisites:
-#   - wasm32-unknown-unknown target: rustup target add wasm32-unknown-unknown
-#   - wasm-bindgen-cli:              cargo install wasm-bindgen-cli
+# Prerequisites are checked and installed automatically.
 
 param(
     [Parameter(Mandatory=$true)]
@@ -30,6 +28,40 @@ Write-Host "  Crate:  $CratePath"
 Write-Host "  Output: $OutDir"
 Write-Host ""
 
+# ── Prerequisite checks ─────────────────────────────────────────────
+
+# 1a. Ensure wasm32-unknown-unknown target is installed
+$targets = rustup target list --installed 2>&1
+if ($targets -notcontains "wasm32-unknown-unknown") {
+    Write-Host "→ Installing wasm32-unknown-unknown target..." -ForegroundColor Yellow
+    rustup target add wasm32-unknown-unknown
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "✗ Failed to add wasm32-unknown-unknown target" -ForegroundColor Red
+        exit $LASTEXITCODE
+    }
+    Write-Host "  ✓ Target installed" -ForegroundColor Green
+} else {
+    Write-Host "  ✓ wasm32-unknown-unknown target found" -ForegroundColor DarkGray
+}
+
+# 1b. Ensure wasm-bindgen-cli is installed
+$wbCmd = Get-Command wasm-bindgen -ErrorAction SilentlyContinue
+if (-not $wbCmd) {
+    Write-Host "→ Installing wasm-bindgen-cli (first time only)..." -ForegroundColor Yellow
+    cargo install wasm-bindgen-cli
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "✗ Failed to install wasm-bindgen-cli" -ForegroundColor Red
+        exit $LASTEXITCODE
+    }
+    Write-Host "  ✓ wasm-bindgen-cli installed" -ForegroundColor Green
+} else {
+    Write-Host "  ✓ wasm-bindgen-cli found" -ForegroundColor DarkGray
+}
+
+Write-Host ""
+
+# ── Build ────────────────────────────────────────────────────────────
+
 # Check crate exists
 if (-not (Test-Path $CratePath)) {
     Write-Host "✗ Crate not found at $CratePath" -ForegroundColor Red
@@ -37,7 +69,7 @@ if (-not (Test-Path $CratePath)) {
     exit 1
 }
 
-# 1. Compile to WASM (release for smaller binary)
+# 2. Compile to WASM (release for smaller binary)
 Write-Host "→ Compiling $DemoName to wasm32..." -ForegroundColor Yellow
 cargo build -p $DemoName --target wasm32-unknown-unknown --release
 if ($LASTEXITCODE -ne 0) {
@@ -45,7 +77,7 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-# 2. Run wasm-bindgen to generate JS glue
+# 3. Run wasm-bindgen to generate JS glue
 Write-Host "→ Generating JS bindings with wasm-bindgen..." -ForegroundColor Yellow
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 wasm-bindgen $TargetWasm --out-dir $OutDir --target web --no-typescript
@@ -54,7 +86,7 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-# 3. Print output files
+# 4. Print output files
 Write-Host ""
 Write-Host "  Build complete" -ForegroundColor Green
 Write-Host "  Files in $OutDir :" -ForegroundColor Green

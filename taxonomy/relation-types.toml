@@ -69,3 +69,16 @@ slug = "commonly-paired-with"
 label = "Commonly paired with"
 description = "Not a lineage claim, but a pattern of co-design."
 directed = false
+
+[[relations]]
+slug = "demonstrates"
+label = "Demonstrates"
+description = "A playable demo that demonstrates a specific work's mechanics or design."
+directed = true
+
+[[relations]]
+slug = "demonstrated-in"
+label = "Demonstrated in"
+description = "A mechanic that is demonstrated in a specific playable demo."
+directed = true
+

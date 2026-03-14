@@ -103,13 +103,12 @@
 				</button>
 			{/if}
 		</div>
-		<div class="family-grid" role="list">
+		<div class="family-grid" role="toolbar" aria-label="Filter by mechanic family">
 			{#each families as f}
 				<button
 					class="family-chip"
 					class:active={activeFamily === f.slug}
 					onclick={() => toggleFamily(f.slug)}
-					role="listitem"
 					aria-pressed={activeFamily === f.slug}
 				>
 					<span class="family-icon">{f.icon}</span>

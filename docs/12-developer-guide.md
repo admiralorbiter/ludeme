@@ -9,10 +9,11 @@ Practical commands for working on Ludeme day-to-day. Keep this updated as the st
 | Tool | Install | Required for |
 |---|---|---|
 | Rust (stable) | `rustup` | Everything Rust |
-| `wasm32-unknown-unknown` target | `rustup target add wasm32-unknown-unknown` | Building demo crates |
-| `wasm-bindgen-cli` | `cargo install wasm-bindgen-cli` | Generating JS glue for WASM |
+| `wasm32-unknown-unknown` target | Auto-installed by `build-demo.ps1` | Building demo crates |
+| `wasm-bindgen-cli` | Auto-installed by `build-demo.ps1` | Generating JS glue for WASM |
 | `sqlx-cli` | `cargo install sqlx-cli --no-default-features --features sqlite,rustls` | Running migrations |
 | Node.js ≥ 20 | nodejs.org | SvelteKit shell |
+
 
 ---
 

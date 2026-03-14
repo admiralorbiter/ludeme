@@ -6,10 +6,12 @@
 mod db;
 mod routes;
 mod seed;
+mod seed_sample;
 
 use axum::{Router, routing::get};
-use sqlx::SqlitePool;
 use tracing::info;
+
+use db::Db;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -28,7 +30,7 @@ async fn main() {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "sqlite:ludeme.db?mode=rwc".to_string());
 
-    let pool = SqlitePool::connect(&database_url)
+    let pool = Db::connect(&database_url)
         .await
         .expect("Failed to connect to SQLite");
 
@@ -54,6 +56,9 @@ async fn main() {
 
     // Seed taxonomy from TOML files (idempotent — safe to run every boot)
     seed::seed_taxonomy(&pool).await.expect("Taxonomy seed failed");
+
+    // Seed the sample Pong slice (idempotent — proves the schema end-to-end)
+    seed_sample::seed_sample_slice(&pool).await.expect("Sample slice seed failed");
 
     // --- Routes ------------------------------------------------------------
     let app = Router::new()
