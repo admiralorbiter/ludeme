@@ -1,0 +1,29 @@
+[package]
+name = "maze-80"
+version = "0.1.0"
+edition = "2021"
+description = "Maze chase (Pac-Man 1980) — AI behavior + state transitions mechanic demo."
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen         = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+js-sys               = { workspace = true }
+serde                = { workspace = true }
+serde_json           = { workspace = true }
+
+[dependencies.web-sys]
+workspace = true
+features = [
+    "Window",
+    "Document",
+    "HtmlCanvasElement",
+    "CanvasRenderingContext2d",
+    "Element",
+    "EventTarget",
+    "KeyboardEvent",
+    "Performance",
+    "console",
+]
