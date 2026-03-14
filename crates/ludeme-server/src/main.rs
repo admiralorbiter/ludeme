@@ -85,14 +85,37 @@ async fn main() {
 }
 
 /// Rebuild the FTS5 search index from current entity data.
-/// Safe to call on every boot — clears and repopulates.
+/// Skips the rebuild if the index already has the right number of rows.
 async fn rebuild_search_index(pool: &sqlx::SqlitePool) {
-    // Clear existing index content
+    // Count how many entities exist across all source tables
+    let entity_count: i64 = sqlx::query_scalar(
+        "SELECT (SELECT COUNT(*) FROM playable_demos)
+              + (SELECT COUNT(*) FROM mechanics)
+              + (SELECT COUNT(*) FROM works)
+              + (SELECT COUNT(*) FROM collections)"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+
+    // Count how many rows are currently in the search index
+    let index_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM search_index"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+
+    if index_count == entity_count && entity_count > 0 {
+        info!("Search index up-to-date ({} entries), skipping rebuild", index_count);
+        return;
+    }
+
+    // Clear and repopulate
     let _ = sqlx::query("DELETE FROM search_index")
         .execute(pool)
         .await;
 
-    // Populate from playable_demos
     let _ = sqlx::query(
         "INSERT INTO search_index (entity_type, entity_id, title, body, tags)
          SELECT 'demo', id, title, COALESCE(description, ''),
@@ -102,7 +125,6 @@ async fn rebuild_search_index(pool: &sqlx::SqlitePool) {
     .execute(pool)
     .await;
 
-    // Populate from mechanics
     let _ = sqlx::query(
         "INSERT INTO search_index (entity_type, entity_id, title, body, tags)
          SELECT 'mechanic', id, name, COALESCE(short_definition, ''), COALESCE(family, '')
@@ -111,7 +133,6 @@ async fn rebuild_search_index(pool: &sqlx::SqlitePool) {
     .execute(pool)
     .await;
 
-    // Populate from works
     let _ = sqlx::query(
         "INSERT INTO search_index (entity_type, entity_id, title, body, tags)
          SELECT 'work', id, title, COALESCE(significance, ''), COALESCE(platform, '')
@@ -120,7 +141,6 @@ async fn rebuild_search_index(pool: &sqlx::SqlitePool) {
     .execute(pool)
     .await;
 
-    // Populate from collections
     let _ = sqlx::query(
         "INSERT INTO search_index (entity_type, entity_id, title, body, tags)
          SELECT 'collection', id, title, COALESCE(learning_goal, ''), ''
@@ -129,5 +149,5 @@ async fn rebuild_search_index(pool: &sqlx::SqlitePool) {
     .execute(pool)
     .await;
 
-    info!("Search index rebuilt");
+    info!("Search index rebuilt ({} entries)", entity_count);
 }

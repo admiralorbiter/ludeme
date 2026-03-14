@@ -8,11 +8,12 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types.js';
 import type { PlayableDemo } from '$lib/types.js';
+import { api } from '$lib/api';
 
 export const load: PageServerLoad = async ({ params, fetch }) => {
 	const { id } = params;
 
-	const res = await fetch(`/api/demos/${id}`);
+	const res = await fetch(api(`/demos/${id}`));
 	if (!res.ok) {
 		error(res.status, `Demo "${id}" not found`);
 	}

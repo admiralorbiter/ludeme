@@ -2,6 +2,7 @@
 	import '../app.css';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { api } from '$lib/api';
 
 	let { children } = $props();
 
@@ -46,7 +47,7 @@
 
 	async function doSearch(q: string) {
 		try {
-			const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+			const res = await fetch(api(`/search?q=${encodeURIComponent(q)}`));
 			if (res.ok) {
 				searchResults = await res.json();
 				showResults = searchResults.length > 0;
@@ -302,13 +303,8 @@
 		gap: var(--space-3);
 		width: 100%;
 		padding: var(--space-2) var(--space-3);
-		background: none;
-		border: none;
 		border-radius: var(--radius-md);
-		cursor: pointer;
 		text-align: left;
-		color: #f1f0f7;
-		font-family: var(--font-sans);
 		transition: background var(--duration-fast) var(--ease);
 	}
 	.search-result:hover {
@@ -337,7 +333,7 @@
 	.result-title {
 		font-size: 0.8125rem;
 		font-weight: 500;
-		color: #f1f0f7;
+		color: var(--text-primary);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -345,7 +341,7 @@
 
 	.result-type {
 		font-size: 0.6875rem;
-		color: #9391a8;
+		color: var(--text-muted);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 	}

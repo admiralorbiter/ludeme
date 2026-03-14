@@ -89,6 +89,10 @@ sqlite3 ludeme.db
 
 The server runs `sqlx::migrate!()` on startup, so after creating new migrations you only need to restart the server — `sqlx migrate run` is not required for normal development.
 
+**Migrations:**
+- `0001_initial.sql` — Core schema (all entity tables, taxonomy, sessions, bookmarks)
+- `0002_fts5_search.sql` — FTS5 full-text search index (demos, mechanics, works)
+
 ---
 
 ## Building a demo crate (WASM)
@@ -192,7 +196,7 @@ ludeme/
 │   │       ├── demo/[id]/        # Demo play shell
 │   │       ├── mechanics/        # Stub (Phase 2)
 │   │       ├── works/            # Stub (Phase 2)
-│   │       └── collections/      # Stub (Phase 1)
+│   │       └── collections/      # Collection list + detail (curated trails)
 │   └── static/
 │       └── demos/                # Compiled WASM outputs (gitignored)
 ├── migrations/            # SQLx SQLite migrations

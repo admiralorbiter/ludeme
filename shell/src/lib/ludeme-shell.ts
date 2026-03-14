@@ -85,8 +85,11 @@ export async function loadDemo(wasmJsPath: string): Promise<void> {
 		const wasmBinaryPath = wasmJsPath.replace(/\.js$/, '_bg.wasm');
 
 		// Dynamically import the JS glue.
-		// wasm-bindgen exports `default` (the init fn) and `initSync`.
-		const glueModule = await import(/* @vite-ignore */ wasmJsPath);
+		// Add a cache-busting query param so the module is freshly imported on each
+		// client-side navigation (otherwise the browser reuses the cached module
+		// whose WASM instance is already dead after the previous page teardown).
+		const cacheBust = `?t=${Date.now()}`;
+		const glueModule = await import(/* @vite-ignore */ `${wasmJsPath}${cacheBust}`);
 
 		// Find the init function — wasm-bindgen names it differently across versions
 		const initFn = glueModule.default ?? glueModule.__wbg_init ?? glueModule.init;
@@ -98,9 +101,9 @@ export async function loadDemo(wasmJsPath: string): Promise<void> {
 			);
 		}
 
-		// Pass the explicit .wasm path so the browser fetches the right binary.
-		// Accept both object form and string form based on wasm-bindgen version.
-		await initFn(wasmBinaryPath);
+		// Pass the explicit .wasm path as an object (new wasm-bindgen API).
+		// This avoids the "using deprecated parameters" warning.
+		await initFn({ module_or_path: wasmBinaryPath });
 
 		// The WASM module's #[wasm_bindgen(start)] fn fires during init().
 		// It emits SessionStart which drives the session store into 'active'.

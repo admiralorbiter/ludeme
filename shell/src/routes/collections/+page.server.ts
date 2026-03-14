@@ -1,7 +1,8 @@
 import type { PageServerLoad } from './$types';
+import { api } from '$lib/api';
 
 export const load: PageServerLoad = async ({ fetch }) => {
-	const res = await fetch('http://localhost:3000/api/collections');
+	const res = await fetch(api('/collections'));
 	if (!res.ok) {
 		return { collections: [] };
 	}

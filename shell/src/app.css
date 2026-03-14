@@ -86,6 +86,15 @@
   padding: 0;
 }
 
+/* Reset buttons so they inherit color/font from the design system */
+button {
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
 html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;

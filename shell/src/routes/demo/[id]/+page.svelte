@@ -3,6 +3,7 @@
 	import { session } from '$lib/session.svelte.js';
 	import { registerShellAPI, loadDemo, setParam } from '$lib/ludeme-shell.js';
 	import type { PageData } from './$types.js';
+	import { api } from '$lib/api';
 
 	let { data } = $props();
 	let demo = $derived(data.demo);
@@ -14,9 +15,10 @@
 	let showPublish     = $state(true);
 
 	// Publish state management
-	let publishState = $state(demo.publish_state ?? 'draft');
+	let publishState = $state('draft');
 	let readiness = $state<{ready: boolean; checks: Array<{field: string; ok: boolean; message: string}>} | null>(null);
 	let publishLoading = $state(false);
+	$effect(() => { publishState = demo.publish_state ?? 'draft'; });
 
 	// Bookmark form
 	let bookmarkLabel = $state('');
@@ -74,7 +76,7 @@
 
 	async function fetchReadiness() {
 		try {
-			const res = await fetch(`/api/readiness/demo/${demo.id}`);
+			const res = await fetch(api(`/readiness/demo/${demo.id}`));
 			if (res.ok) readiness = await res.json();
 		} catch { /* ignore */ }
 	}
@@ -82,7 +84,7 @@
 	async function transitionState(newState: string) {
 		publishLoading = true;
 		try {
-			const res = await fetch('/api/publish', {
+			const res = await fetch(api('/publish'), {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ entity_type: 'demo', id: demo.id, new_state: newState }),

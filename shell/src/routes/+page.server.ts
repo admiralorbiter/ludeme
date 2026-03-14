@@ -6,6 +6,7 @@
  */
 
 import type { PageServerLoad } from './$types.js';
+import { api } from '$lib/api';
 
 // Icons for mechanic families — not stored in the database, defined here.
 const FAMILY_ICONS: Record<string, string> = {
@@ -41,8 +42,8 @@ interface ApiFamily {
 
 export const load: PageServerLoad = async ({ fetch }) => {
 	const [demosRes, familiesRes] = await Promise.all([
-		fetch('/api/demos'),
-		fetch('/api/taxonomy/families'),
+		fetch(api('/demos')),
+		fetch(api('/taxonomy/families')),
 	]);
 
 	const rawDemos: ApiDemo[] = demosRes.ok ? await demosRes.json() : [];

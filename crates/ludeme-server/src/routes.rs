@@ -7,7 +7,7 @@ use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post},
+    routing::{get, patch, post},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
@@ -19,6 +19,21 @@ use sqlx::SqlitePool;
 
 pub async fn health() -> impl IntoResponse {
     Json(serde_json::json!({ "status": "ok", "service": "ludeme-server" }))
+}
+
+// ---------------------------------------------------------------------------
+// Shared pagination
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+pub struct Pagination {
+    pub limit:  Option<i64>,
+    pub offset: Option<i64>,
+}
+
+impl Pagination {
+    fn limit(&self) -> i64  { self.limit.unwrap_or(50).min(200).max(1) }
+    fn offset(&self) -> i64 { self.offset.unwrap_or(0).max(0) }
 }
 
 // ---------------------------------------------------------------------------
@@ -136,10 +151,13 @@ pub struct TaxonomyRow {
 
 async fn list_demos(
     State(pool): State<SqlitePool>,
+    Query(pg): Query<Pagination>,
 ) -> Result<impl IntoResponse, AppError> {
     let demos = sqlx::query_as::<_, DemoRow>(
-        "SELECT * FROM playable_demos ORDER BY created_at DESC"
+        "SELECT * FROM playable_demos ORDER BY created_at DESC LIMIT ? OFFSET ?"
     )
+    .bind(pg.limit())
+    .bind(pg.offset())
     .fetch_all(&pool)
     .await?;
 
@@ -169,10 +187,13 @@ async fn get_demo(
 
 async fn list_mechanics(
     State(pool): State<SqlitePool>,
+    Query(pg): Query<Pagination>,
 ) -> Result<impl IntoResponse, AppError> {
     let mechanics = sqlx::query_as::<_, MechanicRow>(
-        "SELECT * FROM mechanics ORDER BY name ASC"
+        "SELECT * FROM mechanics ORDER BY name ASC LIMIT ? OFFSET ?"
     )
+    .bind(pg.limit())
+    .bind(pg.offset())
     .fetch_all(&pool)
     .await?;
 
@@ -233,10 +254,13 @@ async fn create_mechanic(
 
 async fn list_works(
     State(pool): State<SqlitePool>,
+    Query(pg): Query<Pagination>,
 ) -> Result<impl IntoResponse, AppError> {
     let works = sqlx::query_as::<_, WorkRow>(
-        "SELECT * FROM works ORDER BY title ASC"
+        "SELECT * FROM works ORDER BY title ASC LIMIT ? OFFSET ?"
     )
+    .bind(pg.limit())
+    .bind(pg.offset())
     .fetch_all(&pool)
     .await?;
 
@@ -528,12 +552,16 @@ struct CollectionRow {
 
 async fn list_collections(
     State(pool): State<SqlitePool>,
+    Query(pg): Query<Pagination>,
 ) -> Result<impl IntoResponse, AppError> {
     let rows = sqlx::query_as::<_, CollectionRow>(
         "SELECT id, title, learning_goal, ordered_items, publish_state, created_at
          FROM collections
-         ORDER BY created_at DESC"
+         ORDER BY created_at DESC
+         LIMIT ? OFFSET ?"
     )
+    .bind(pg.limit())
+    .bind(pg.offset())
     .fetch_all(&pool)
     .await?;
     Ok(Json(rows))
