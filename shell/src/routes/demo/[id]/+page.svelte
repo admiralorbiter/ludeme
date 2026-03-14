@@ -7,6 +7,8 @@
 
 	let { data } = $props();
 	let demo = $derived(data.demo);
+	let linkedWork = $derived(data.linkedWork);
+	let linkedMechanics = $derived(data.linkedMechanics ?? []);
 
 	// Panel visibility
 	let showParamTuner  = $state(true);
@@ -122,13 +124,22 @@
 	<header class="demo-header">
 		<div class="demo-breadcrumb">
 			<a href="/">Discover</a>
+			{#if linkedWork}
+				<span class="sep">›</span>
+				<a href="/works/{linkedWork.id}">{linkedWork.title}</a>
+			{/if}
 			<span class="sep">›</span>
 			<span>{demo.title}</span>
 		</div>
 		<div class="demo-header-right">
-			{#each demo.mechanic_tags as tag}
-				<span class="chip teal">{tag.replace(/-/g, ' ')}</span>
+			{#each linkedMechanics as mech}
+				<a href="/mechanics/{mech.id}" class="chip teal chip-link">{mech.family.replace(/-/g, ' ')}</a>
 			{/each}
+			{#if linkedMechanics.length === 0}
+				{#each demo.mechanic_tags as tag}
+					<span class="chip teal">{tag.replace(/-/g, ' ')}</span>
+				{/each}
+			{/if}
 			<span class="badge {demo.fidelity_level}">
 				{FIDELITY_LABELS[demo.fidelity_level]}
 			</span>
@@ -866,6 +877,18 @@
 	.readiness-item.fail .readiness-icon { color: #ef4444; }
 	.readiness-label { color: #9391a8; }
 	.readiness-msg { color: #ef4444; font-size: 0.6875rem; }
+
+	/* Clickable entity chips */
+	.chip-link {
+		text-decoration: none;
+		cursor: pointer;
+		transition: background var(--duration-fast) var(--ease),
+		            transform var(--duration-fast) var(--ease);
+	}
+	.chip-link:hover {
+		background: var(--teal-muted);
+		transform: translateY(-1px);
+	}
 
 	/* ---- Responsive ---- */
 	@media (max-width: 900px) {

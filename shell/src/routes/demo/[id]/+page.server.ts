@@ -38,7 +38,24 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 		hypothesis:     raw.hypothesis ?? undefined,
 	};
 
-	return { demo };
+	// Fetch linked work (for breadcrumb)
+	let linkedWork: { id: string; title: string } | null = null;
+	if (demo.linked_work) {
+		const wRes = await fetch(api(`/works/${demo.linked_work}`));
+		if (wRes.ok) {
+			const w = await wRes.json();
+			linkedWork = { id: w.id, title: w.title };
+		}
+	}
+
+	// Fetch mechanics matching demo's tags (for clickable chips)
+	const mechRes = await fetch(api('/mechanics'));
+	const allMechanics = mechRes.ok ? await mechRes.json() : [];
+	const linkedMechanics = allMechanics
+		.filter((m: any) => demo.mechanic_tags.includes(m.family))
+		.map((m: any) => ({ id: m.id, name: m.name, family: m.family }));
+
+	return { demo, linkedWork, linkedMechanics };
 };
 
 /** Safely parse a JSON string, returning the fallback if it fails */
