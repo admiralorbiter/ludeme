@@ -23,9 +23,9 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // TODO(phase-0): establish SQLx database connection pool.
-    // let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    // let pool = sqlx::PgPool::connect(&database_url).await.expect("Failed to connect to Postgres");
+    // TODO(phase-0): establish SQLx SQLite connection pool.
+    // let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:ludeme.db".to_string());
+    // let pool = sqlx::SqlitePool::connect(&database_url).await.expect("Failed to connect to SQLite");
 
     // TODO(phase-0): run pending SQLx migrations.
     // sqlx::migrate!("./migrations").run(&pool).await.expect("Migration failed");

@@ -27,3 +27,24 @@ A running record of significant product and technical decisions. Add an entry wh
 **Trade-off acknowledged:** Shell is not fully Rust. Accepted — the shell API contract (`window.__ludeme`) is the explicit boundary between game code and platform code.
 
 **Reference:** docs/02-tech-stack.md — "Frontend exception"
+
+---
+
+## 2026-03-13 — SQLite over PostgreSQL
+
+**Context:** Initial scaffolding used Postgres as the DB default. Before any migrations were written, evaluated whether Postgres is the right fit for Ludeme's actual data profile.
+
+**Decision:** SQLite (WAL mode) via SQLx. `DATABASE_URL=sqlite:ludeme.db`.
+
+**Rationale:** Ludeme's data access pattern is read-heavy, write-light, single-server, and personal-scale. Mechanics, works, demos, observations, and bookmarks are added infrequently; browse/search reads dominate. SQLite in WAL mode handles this workload without the operational overhead of a Postgres server (no separate process, no connection strings, no pg_hba.conf, backup is a file copy). SQLx's compile-time query checking and migration system work identically on SQLite.
+
+**What changes:**
+- `sqlx` feature: `postgres` → `sqlite`
+- Pool type: `SqlitePool` instead of `PgPool`  
+- `DATABASE_URL` format: `sqlite:ludeme.db`
+- Full-text search: `FTS5` instead of `tsvector` (equally capable, different syntax)
+- Array columns: JSON columns instead of `TEXT[]`
+
+**Trade-off acknowledged:** Cannot scale to multi-server deployments without Litestream or a move to Turso. Accepted — this is not a projected need for the lifetime of the project. If ever required, SQLx makes migration to Postgres straightforward (type-identical queries with minor dialect differences).
+
+**Reference:** docs/02-tech-stack.md (update this doc to reflect the change)
