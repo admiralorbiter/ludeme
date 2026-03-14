@@ -1,0 +1,49 @@
+[[families]]
+slug = "movement"
+label = "Movement"
+description = "How entities traverse space. Includes walking, running, jumping, flying, swimming, and screen-relative movement."
+
+[[families]]
+slug = "collision-response"
+label = "Collision and Deflection"
+description = "What happens when entities meet. Bounce physics, knockback, block, deflect, pass-through, and destruction."
+
+[[families]]
+slug = "scoring-pressure"
+label = "Scoring and Pressure"
+description = "How the game escalates tension and rewards. Points, timers, lives, combos, and thresholds."
+
+[[families]]
+slug = "state-transitions"
+label = "State Transitions"
+description = "Discrete mode changes in a character or system. Grounded/airborne, charge states, vulnerability windows, phase changes."
+
+[[families]]
+slug = "economy"
+label = "Economy and Resources"
+description = "Acquisition, spending, scarcity, and flow of any resource. Ammo, currency, health, fuel, time."
+
+[[families]]
+slug = "timing-windows"
+label = "Timing and Rhythm"
+description = "Player actions that are only valid or optimal within a time window. Parry, just-frame inputs, rhythmic beats."
+
+[[families]]
+slug = "spatial-rules"
+label = "Spatial Rules"
+description = "Rules about where entities can be. Screen wrap, bounded zones, grid constraints, proximity triggers."
+
+[[families]]
+slug = "ai-behavior"
+label = "AI and NPC Behavior"
+description = "How non-player entities make decisions. Patrol, chase, flee, predict, swarm."
+
+[[families]]
+slug = "progression"
+label = "Progression and Unlock"
+description = "How the game changes as the player advances. Difficulty curves, new mechanics introduced, gates and unlocks."
+
+[[families]]
+slug = "information"
+label = "Information and Visibility"
+description = "What the player knows, when they know it, and what is hidden. Fog of war, tells, reveals, deception."

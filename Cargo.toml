@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/ludeme-core",
+    "crates/ludeme-server",
+    "crates/ludeme-macros",
+]
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+tokio = { version = "1", features = ["full"] }
+axum = "0.8"
+sqlx = { version = "0.8", features = ["postgres", "uuid", "runtime-tokio-native-tls", "migrate"] }
+ts-rs = { version = "10", features = ["uuid-impl"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dotenvy = "0.15"

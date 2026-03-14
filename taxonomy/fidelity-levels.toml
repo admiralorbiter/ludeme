@@ -1,0 +1,20 @@
+[[levels]]
+slug = "faithful"
+label = "Faithful"
+description = "Good-faith match of the original mechanic's rules, timing values, input mapping, and fail conditions. Visual and audio may be simplified; mechanic behavior must be indistinguishable to a player familiar with the original."
+requires_notable_interpretations = false
+requires_hypothesis = false
+
+[[levels]]
+slug = "interpreted"
+label = "Interpreted"
+description = "Based on the original but with at least one documented departure — a parameter chosen for clarity, a control scheme updated for modern input, or a simplification that trades historical accuracy for teaching value. Each departure must be listed in notable_interpretations."
+requires_notable_interpretations = true
+requires_hypothesis = false
+
+[[levels]]
+slug = "experimental"
+label = "Experimental"
+description = "The mechanic is the inspiration, not the source. Tests a hypothesis, explores a variant, or asks what-if. No claim of historical accuracy. Must have a hypothesis or intent statement and a link to the parent demo or mechanic."
+requires_notable_interpretations = false
+requires_hypothesis = true

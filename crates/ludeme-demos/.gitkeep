@@ -1,0 +1,4 @@
+# ludeme demos placeholder — one crate per demo lives here.
+# Each crate compiles to a WASM binary (cdylib).
+# See docs/03-crate-architecture.md for demo crate responsibilities.
+# Demo stubs (pong-76, maze-80, jump-feel) will be added in a later session.

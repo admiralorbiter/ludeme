@@ -1,0 +1,13 @@
+{
+  "name": "ludeme",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently --names \"api,shell\" --prefix-colors \"cyan,magenta\" \"cargo run -p ludeme-server\" \"npm run dev --prefix shell\"",
+    "build": "npm run build --prefix shell",
+    "preview": "npm run preview --prefix shell",
+    "check": "npm run check --prefix shell"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

@@ -1,0 +1,11 @@
+[package]
+name = "ludeme-core"
+version = "0.1.0"
+edition = "2021"
+description = "Shared entity types, event protocol, and relation vocabulary for Ludeme."
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+ts-rs = { workspace = true }

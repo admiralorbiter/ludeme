@@ -1,0 +1,13 @@
+[package]
+name = "ludeme-macros"
+version = "0.1.0"
+edition = "2021"
+description = "Optional derive macros for Ludeme (param manifests, state emission)."
+
+[lib]
+proc-macro = true
+
+[dependencies]
+# Proc-macro dependencies added here as needed.
+# syn = { version = "2", features = ["full"] }
+# quote = "1"

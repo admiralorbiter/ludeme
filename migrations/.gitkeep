@@ -1,0 +1,3 @@
+# placeholder — keeps this directory in version control
+# First real migration (entity tables) is a Phase 0 deliverable.
+# See docs/06-domain-model.md for the schema sketch.
