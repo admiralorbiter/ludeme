@@ -17,66 +17,17 @@
 | RelationshipEdge | A typed link between two entities. | from_id, from_type, to_id, to_type, relation_type, confidence, note |
 | Session | A recorded play session. | demo_id, branch_id, seed, input_log, frame_count, duration_ms, frame_ticks |
 
-## Database schema sketch
+## Database schema
 
-```sql
--- Core entities use UUID primary keys
--- All entity tables have: id, created_at, updated_at, publish_state
+The full schema is in [`migrations/0001_initial.sql`](../migrations/0001_initial.sql). Key SQLite translation decisions vs a Postgres sketch:
 
-CREATE TABLE mechanics (
-    id UUID PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    family TEXT NOT NULL REFERENCES mechanic_families(slug),
-    short_definition TEXT,
-    rule_summary JSONB,
-    verbs TEXT[],
-    failure_pattern TEXT,
-    mastery_pattern TEXT,
-    state_graph JSONB,        -- nodes and transitions for overlay
-    search_vector TSVECTOR,
-    publish_state TEXT NOT NULL DEFAULT 'draft',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+| Postgres type | SQLite equivalent | Notes |
+|---|---|---|
+| `UUID` | `TEXT` | Stored as hyphenated string, generated in Rust with `uuid::Uuid::new_v4()` |
+| `TIMESTAMPTZ` | `TEXT` | ISO-8601 format via `strftime('%Y-%m-%dT%H:%M:%fZ', 'now')` |
+| `JSONB` | `TEXT` | Serialized JSON, parsed in app layer |
+| `TEXT[]` | `TEXT` | JSON array, e.g. `'["mechanic-a","mechanic-b"]'` |
+| `BYTEA` | `BLOB` | Input logs, state blobs |
+| `tsvector` / full-text | `FTS5` virtual table | `mechanics_fts`, `works_fts`, `demos_fts` — content-backed, synced via rebuild |
 
--- Typed relationship edges — the core graph table
-CREATE TABLE relationship_edges (
-    id UUID PRIMARY KEY,
-    from_id UUID NOT NULL,
-    from_type TEXT NOT NULL,  -- 'mechanic', 'work', 'demo', etc.
-    to_id UUID NOT NULL,
-    to_type TEXT NOT NULL,
-    relation_type TEXT NOT NULL REFERENCES relation_types(slug),
-    confidence TEXT NOT NULL DEFAULT 'tentative',
-    note TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX ON relationship_edges (from_id, relation_type);
-CREATE INDEX ON relationship_edges (to_id, relation_type);
-
--- Sessions and moment bookmarks
-CREATE TABLE sessions (
-    id UUID PRIMARY KEY,
-    demo_id UUID NOT NULL REFERENCES playable_demos(id),
-    branch_id TEXT,
-    seed BIGINT NOT NULL,
-    input_log BYTEA,
-    frame_ticks JSONB,        -- array of FrameTick for heat map
-    frame_count BIGINT,
-    duration_ms BIGINT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE moment_bookmarks (
-    id UUID PRIMARY KEY,
-    session_id UUID REFERENCES sessions(id),
-    demo_id UUID NOT NULL REFERENCES playable_demos(id),
-    frame BIGINT NOT NULL,
-    state_blob BYTEA,
-    player_label TEXT,
-    auto_tags TEXT[],
-    screenshot_url TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-```
+Tables: `mechanics`, `works`, `playable_demos`, `observations`, `experiments`, `comparisons`, `collections`, `sources`, `relationship_edges`, `sessions`, `moment_bookmarks` plus taxonomy tables `mechanic_families`, `relation_types`, `fidelity_levels`.

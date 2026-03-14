@@ -6,7 +6,7 @@
 |---|---|---|
 | Game demos | Rust + macroquad → WASM | Self-contained WASM binaries. macroquad is small, has clean WASM output, and is designed for micro-demos, not full engines. |
 | Backend API | Rust + Axum | Shared types with game crates via `ludeme-core`. SQLx compile-time query checking. Single binary deployment. |
-| Database | PostgreSQL | Relational enough for the entity graph via a typed edges table. pgvector available later for semantic search. Full-text search via `tsvector`. |
+| Database | SQLite (WAL mode) via SQLx | Read-heavy, write-light, single-server workload. No separate process — the DB is a file. Full-text search via FTS5 virtual tables. SQLx compile-time query checking works identically to Postgres. See `DECISION-LOG.md` for the full rationale. |
 | Frontend shell | SvelteKit + TypeScript | Handles content-heavy sites well, embeds WASM cleanly, lighter than React for this use case. Types generated from Rust core via `ts-rs`. |
 | Taxonomy / config | TOML files in version control | Human-readable, append-only, seeded into the database on startup. No migration required to add a new mechanic family or relation type. |
 | Tooling scripts | Python (tools/ only) | Acceptable for bulk import, one-off data migration, or research scripting against the API. Not part of the core stack. |
@@ -17,7 +17,7 @@ The primary argument is the **shared types crate**. Entity types — Mechanic, W
 
 Secondary arguments: SQLx compile-time query verification is stronger than anything available in Python. Single binary deployment eliminates runtime environment management. The boilerplate cost is real but front-loaded.
 
-The only future pressure point is semantic search over mechanic definitions and observations. pgvector plus periodic embedding generation via an external API endpoint handles this at the scale Ludeme will operate for a long time. It does not require Python in the server.
+The only future pressure point is semantic search over mechanic definitions and observations. SQLite FTS5 handles keyword search natively. For embedding-based semantic search, the plan is to store vectors as JSON blobs and compute cosine similarity in the app layer — sufficient at Ludeme's scale. If this proves inadequate, migration to Turso (distributed SQLite) or Postgres is realistic given SQLx's abstractions.
 
 ## Frontend exception
 
