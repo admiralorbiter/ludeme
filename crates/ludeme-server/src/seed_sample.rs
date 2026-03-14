@@ -28,6 +28,15 @@ const EDGE_WORK_MAZE:      &str = "00000000-0000-4000-8000-000000000034";
 const EDGE_MECH3_MAZE:     &str = "00000000-0000-4000-8000-000000000035";
 const EDGE_MECH4_MAZE:     &str = "00000000-0000-4000-8000-000000000036";
 
+// Jump-feel slice
+const WORK_SMB:            &str = "00000000-0000-4000-8000-000000000040";
+const MECH_PLATFORM_MOVE:  &str = "00000000-0000-4000-8000-000000000041";
+const MECH_TIMING_WINDOWS: &str = "00000000-0000-4000-8000-000000000042";
+const DEMO_JUMP_FEEL:      &str = "00000000-0000-4000-8000-000000000043";
+const EDGE_WORK_JUMP:      &str = "00000000-0000-4000-8000-000000000044";
+const EDGE_MECH5_JUMP:     &str = "00000000-0000-4000-8000-000000000045";
+const EDGE_MECH6_JUMP:     &str = "00000000-0000-4000-8000-000000000046";
+
 // Collection
 const COLLECTION_ORIGINS:  &str = "00000000-0000-4000-8000-000000000020";
 
@@ -173,23 +182,92 @@ pub async fn seed_sample_slice(pool: &SqlitePool) -> anyhow::Result<()> {
     count += r as usize;
 
     // =====================================================================
-    // Collection: Origins of Arcade (Pong + Maze Chase)
+    // Slice 3: Jump Feel / Super Mario Bros (1985)
     // =====================================================================
 
-    let ordered = serde_json::json!([DEMO_PONG_76, DEMO_MAZE_80]).to_string();
+    let r = sqlx::query!(
+        "INSERT OR IGNORE INTO works (id, title, year, platform, genre, significance, publish_state)
+         VALUES (?, ?, ?, ?, ?, ?, ?)",
+        WORK_SMB, "Super Mario Bros.", 1985i64, "NES", "Platformer",
+        "Defined the side-scrolling platformer genre. Its jump physics — variable height, precise air control, and coyote time — became the gold standard for movement feel.",
+        "public"
+    ).execute(pool).await?.rows_affected();
+    count += r as usize;
+
+    let verbs5 = r#"["run","jump","land","fall"]"#;
+    let r = sqlx::query!(
+        "INSERT OR IGNORE INTO mechanics (id, name, family, short_definition, verbs, failure_pattern, mastery_pattern, publish_state)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        MECH_PLATFORM_MOVE, "Platform Movement", "movement",
+        "Character traverses space by running and jumping between platforms. Gravity pulls the character down; jump force launches upward with controllable height.",
+        verbs5,
+        "Misjudging a gap and falling into a pit",
+        "Chaining precise jumps through complex platform sequences without stopping",
+        "public"
+    ).execute(pool).await?.rows_affected();
+    count += r as usize;
+
+    let verbs6 = r#"["time","buffer","cancel"]"#;
+    let r = sqlx::query!(
+        "INSERT OR IGNORE INTO mechanics (id, name, family, short_definition, verbs, failure_pattern, mastery_pattern, publish_state)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        MECH_TIMING_WINDOWS, "Timing Windows", "timing-windows",
+        "Brief grace periods (coyote time, jump buffering) that forgive imprecise input timing. Makes the game feel responsive without reducing difficulty.",
+        verbs6,
+        "Pressing jump one frame too late and falling off a ledge",
+        "Instinctively using coyote time to extend jumps beyond platform edges",
+        "public"
+    ).execute(pool).await?.rows_affected();
+    count += r as usize;
+
+    let jump_tags = r#"["movement","timing-windows"]"#;
+    let jump_graph = r#"{"states":[{"id":"grounded","label":"Grounded"},{"id":"jumping","label":"Jumping"},{"id":"falling","label":"Falling"},{"id":"coyote_time","label":"Coyote Time"}],"transitions":[{"from":"grounded","to":"jumping","trigger":"jump_pressed"},{"from":"grounded","to":"coyote_time","trigger":"walked_off_edge"},{"from":"coyote_time","to":"jumping","trigger":"jump_pressed"},{"from":"coyote_time","to":"falling","trigger":"timer_expired"},{"from":"jumping","to":"falling","trigger":"apex_reached"},{"from":"falling","to":"grounded","trigger":"landed"}]}"#;
+    let r = sqlx::query!(
+        "INSERT OR IGNORE INTO playable_demos (id, title, linked_work, mechanic_tags, fidelity_level, branch_id, wasm_path, description, era, platform, state_graph, publish_state)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        DEMO_JUMP_FEEL, "Jump Feel", WORK_SMB, jump_tags, "interpreted", "main",
+        "/demos/jump-feel/jump_feel.js",
+        "Explore how gravity, jump force, and coyote time shape the feel of a platformer. Collect all coins to complete the level — adjust the physics to see how it changes the experience.",
+        "1985", "NES", jump_graph, "public"
+    ).execute(pool).await?.rows_affected();
+    count += r as usize;
+
+    let r = sqlx::query!("INSERT OR IGNORE INTO relationship_edges (id, from_id, from_type, to_id, to_type, relation_type, confidence) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        EDGE_WORK_JUMP, WORK_SMB, "work", DEMO_JUMP_FEEL, "demo", "demonstrates", "established"
+    ).execute(pool).await?.rows_affected();
+    count += r as usize;
+
+    let r = sqlx::query!("INSERT OR IGNORE INTO relationship_edges (id, from_id, from_type, to_id, to_type, relation_type, confidence) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        EDGE_MECH5_JUMP, MECH_PLATFORM_MOVE, "mechanic", DEMO_JUMP_FEEL, "demo", "demonstrated-in", "established"
+    ).execute(pool).await?.rows_affected();
+    count += r as usize;
+
+    let r = sqlx::query!("INSERT OR IGNORE INTO relationship_edges (id, from_id, from_type, to_id, to_type, relation_type, confidence) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        EDGE_MECH6_JUMP, MECH_TIMING_WINDOWS, "mechanic", DEMO_JUMP_FEEL, "demo", "demonstrated-in", "established"
+    ).execute(pool).await?.rows_affected();
+    count += r as usize;
+
+    // =====================================================================
+    // Collection: Origins of Arcade (all 3 demos)
+    // =====================================================================
+
+    let ordered = serde_json::json!([DEMO_PONG_76, DEMO_MAZE_80, DEMO_JUMP_FEEL]).to_string();
     let r = sqlx::query!(
         "INSERT OR IGNORE INTO collections (id, title, learning_goal, ordered_items, publish_state)
          VALUES (?, ?, ?, ?, 'public')",
         COLLECTION_ORIGINS,
-        "Origins of Bounce",
-        "Trace how ball-and-paddle mechanics evolved from the first electronic game to modern physics engines.",
+        "Origins of Arcade",
+        "Trace how arcade mechanics evolved from ball-and-paddle through maze chase to platformer physics.",
         ordered
     ).execute(pool).await?.rows_affected();
     count += r as usize;
 
-    // Update collection to include maze-80 if it already existed
-    sqlx::query!("UPDATE collections SET ordered_items = ? WHERE id = ?", ordered, COLLECTION_ORIGINS)
-        .execute(pool).await?;
+    // Update collection to include all 3 if it already existed
+    let title_update = "Origins of Arcade";
+    let goal_update = "Trace how arcade mechanics evolved from ball-and-paddle through maze chase to platformer physics.";
+    sqlx::query!("UPDATE collections SET ordered_items = ?, title = ?, learning_goal = ? WHERE id = ?",
+        ordered, title_update, goal_update, COLLECTION_ORIGINS
+    ).execute(pool).await?;
 
     info!("Sample slice: {} entities seeded (0 = already present)", count);
     Ok(())

@@ -1,0 +1,29 @@
+[package]
+name = "jump-feel"
+version = "0.1.0"
+edition = "2021"
+description = "Jump feel — movement + timing-windows mechanic demo. Platformer jump arcs."
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen         = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+js-sys               = { workspace = true }
+serde                = { workspace = true }
+serde_json           = { workspace = true }
+
+[dependencies.web-sys]
+workspace = true
+features = [
+    "Window",
+    "Document",
+    "HtmlCanvasElement",
+    "CanvasRenderingContext2d",
+    "Element",
+    "EventTarget",
+    "KeyboardEvent",
+    "Performance",
+    "console",
+]

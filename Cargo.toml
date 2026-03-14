@@ -6,6 +6,7 @@ members = [
     "crates/ludeme-macros",
     "crates/ludeme-demos/pong-76",
     "crates/ludeme-demos/maze-80",
+    "crates/ludeme-demos/jump-feel",
 ]
 
 [workspace.dependencies]
