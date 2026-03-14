@@ -56,13 +56,14 @@ if ($LASTEXITCODE -ne 0) {
 
 # 3. Print output files
 Write-Host ""
-Write-Host "✓ Build complete" -ForegroundColor Green
+Write-Host "  Build complete" -ForegroundColor Green
 Write-Host "  Files in $OutDir :" -ForegroundColor Green
 Get-ChildItem $OutDir | ForEach-Object {
-    $size = [math]::Round($_.Length / 1024, 1)
-    Write-Host "    $($_.Name)  (${size}KB)"
+    $name = $_.Name
+    $kb   = [math]::Round($_.Length / 1024, 1)
+    Write-Host "    $name  ($($kb)KB)"
 }
 Write-Host ""
-Write-Host "  Shell path will be: /demos/$DemoName/${CrateName}.js" -ForegroundColor Cyan
-Write-Host "  Set wasm_path in +page.server.ts to: /demos/$DemoName/${CrateName}.wasm" -ForegroundColor Cyan
+Write-Host "  Shell path: /demos/$DemoName/$($CrateName).js" -ForegroundColor Cyan
+Write-Host "  wasm_path:  /demos/$DemoName/$($CrateName).wasm" -ForegroundColor Cyan
 Write-Host ""

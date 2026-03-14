@@ -55,8 +55,8 @@ export function registerShellAPI(): void {
 		// If the WASM module exposes a setter, call it
 		// (wasm-bindgen generates ludeme_set_param on the module instance)
 		if (typeof (window as unknown as Record<string, unknown>).ludeme_set_param === 'function') {
-			(window as unknown as Record<string, { (k: string, v: number): void }[]>)
-				.ludeme_set_param(key, value);
+			const fn = (window as unknown as Record<string, (k: string, v: number) => void>).ludeme_set_param;
+			fn(key, value);
 		}
 	};
 }
@@ -76,24 +76,27 @@ export function syncParams(values: Record<string, number>): void {
 // Load and initialise a WASM demo module
 // ---------------------------------------------------------------------------
 
-export async function loadDemo(wasmPath: string): Promise<void> {
+export async function loadDemo(wasmJsPath: string): Promise<void> {
 	session.setStatus('loading');
 
 	try {
-		// Dynamically import the wasm-bindgen JS glue module.
-		// Each demo's build outputs a <name>.js that exports `default` (init).
-		const glueModule = await import(/* @vite-ignore */ wasmPath.replace('.wasm', '.js'));
+		// wasmJsPath points to the wasm-bindgen JS glue (e.g. /demos/pong-76/pong_76.js)
+		// The .wasm binary is the sibling _bg.wasm file (wasm-bindgen naming convention)
+		const wasmBinaryPath = wasmJsPath.replace(/\.js$/, '_bg.wasm');
+
+		// Dynamically import the JS glue. It exports `default` which is the init() fn.
+		const glueModule = await import(/* @vite-ignore */ wasmJsPath);
 
 		if (typeof glueModule.default !== 'function') {
-			throw new Error('WASM glue module does not export a default init function.');
+			throw new Error('WASM glue module does not export a default init() function.');
 		}
 
-		// Register the shell API BEFORE init so the game can call it immediately.
-		registerShellAPI();
+		// Pass the explicit .wasm path so the browser fetches the right binary.
+		// init() with no args uses a default URL that may not resolve correctly in Vite.
+		await glueModule.default({ module_or_path: wasmBinaryPath });
 
-		await glueModule.default(wasmPath);
-
-		session.setStatus('ready');
+		// The WASM module's #[wasm_bindgen(start)] fn fires during init().
+		// It emits SessionStart which drives the session store into 'active'.
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
 		session.setError({

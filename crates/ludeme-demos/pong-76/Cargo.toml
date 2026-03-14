@@ -1,0 +1,33 @@
+[package]
+name = "pong-76"
+version = "0.1.0"
+edition = "2021"
+description = "Pong (1972) — faithful mechanic demo. Collision response + scoring pressure."
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen         = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+js-sys               = { workspace = true }
+serde                = { workspace = true }
+serde_json           = { workspace = true }
+
+[dependencies.web-sys]
+workspace = true
+features = [
+    "Window",
+    "Document",
+    "HtmlCanvasElement",
+    "CanvasRenderingContext2d",
+    "Element",
+    "EventTarget",
+    "KeyboardEvent",
+    "Performance",
+    "console",
+]
+
+[profile.release]
+opt-level = "z"
+lto       = true

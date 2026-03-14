@@ -255,7 +255,38 @@
 				</div>
 			{/if}
 
-			<!-- Moment bookmark capture -->
+			<!-- Recent moments (non-blocking — auto-emitted by the game) -->
+			{#if session.recentMoments.length}
+				<div class="panel">
+					<button
+						class="panel-header"
+						onclick={() => showBookmarks = !showBookmarks}
+						aria-expanded={showBookmarks}
+					>
+						<span class="panel-title">
+							📌 Moments
+							<span class="panel-badge">{session.recentMoments.length}</span>
+						</span>
+						<span class="panel-toggle">{showBookmarks ? '▲' : '▼'}</span>
+					</button>
+					{#if showBookmarks}
+						<div class="panel-body">
+							{#each [...session.recentMoments].reverse() as m}
+								<div class="bookmark-row">
+									<span class="bookmark-frame">f{m.frame}</span>
+									<div class="bookmark-tags">
+										{#each m.auto_tags as tag}
+											<span class="chip chip-sm">{tag}</span>
+										{/each}
+									</div>
+								</div>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			{/if}
+
+			<!-- Explicit pending capture (user-triggered, shows pause overlay) -->
 			{#if session.isPaused && session.pendingMoment}
 				<div class="panel panel--highlight">
 					<div class="panel-header no-btn">
@@ -648,10 +679,20 @@
 		color: var(--text-muted);
 	}
 	.moment-label-input { font-size: 0.875rem; }
-	.moment-tags {
+	.moment-tags, .bookmark-tags {
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--space-1);
+	}
+	.chip-sm {
+		font-size: 0.65rem;
+		padding: 1px 5px;
+		border-radius: 3px;
+		background: var(--bg-subtle);
+		color: var(--text-muted);
+		border: 1px solid var(--border);
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
 	}
 	.moment-actions {
 		display: flex;

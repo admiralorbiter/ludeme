@@ -76,8 +76,9 @@ function createSessionStore() {
 	let currentStates = $state<string[]>([]);
 	let lastStateChange = $state<StateChange | null>(null);
 
-	// Bookmarks captured this session
-	let pendingMoment = $state<MomentEmit | null>(null);
+	// Moments: auto-captured moments (non-blocking), pending moment (explicit/paused)
+	let recentMoments = $state<MomentEmit[]>([]);  // game-emitted, shown passively
+	let pendingMoment  = $state<MomentEmit | null>(null); // explicit capture, shows pause overlay
 	let sessionBookmarks = $state<MomentBookmark[]>([]);
 
 	// Event log (capped at last 200)
@@ -123,8 +124,11 @@ function createSessionStore() {
 			}
 
 			case 'moment_emit': {
-				pendingMoment = event.data as MomentEmit;
-				status = 'paused';
+				const m = event.data as MomentEmit;
+				// Record passively — the game keeps running.
+				// Only pause if this is an explicit user-triggered capture (pendingMoment set externally).
+				recentMoments = [...recentMoments.slice(-19), m]; // keep last 20
+				// Do NOT set status = 'paused' here. Pausing is user-initiated.
 				break;
 			}
 
@@ -167,6 +171,7 @@ function createSessionStore() {
 		paramManifest = null;
 		paramValues = {};
 		currentStates = [];
+		recentMoments = [];
 		pendingMoment = null;
 		eventLog = [];
 	}
@@ -215,6 +220,7 @@ function createSessionStore() {
 		paramValues = {};
 		currentStates = [];
 		lastStateChange = null;
+		recentMoments = [];
 		pendingMoment = null;
 		sessionBookmarks = [];
 		eventLog = [];
@@ -234,6 +240,7 @@ function createSessionStore() {
 		get paramValues()      { return paramValues; },
 		get currentStates()    { return currentStates; },
 		get lastStateChange()  { return lastStateChange; },
+		get recentMoments()    { return recentMoments; },
 		get pendingMoment()    { return pendingMoment; },
 		get sessionBookmarks() { return sessionBookmarks; },
 		get eventLog()         { return eventLog; },
