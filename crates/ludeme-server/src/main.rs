@@ -1,20 +1,21 @@
 // ludeme-server/src/main.rs
 //
-// Axum backend entry point. Boots the HTTP server, connects to Postgres,
-// and seeds the taxonomy tables on startup.
-//
-// Phase 0 stub — routes and DB logic will be filled in during Phase 0 proper.
+// Axum backend — boots, connects to SQLite, runs migrations, seeds taxonomy,
+// and serves the REST API used by the SvelteKit shell.
 
-use axum::{response::IntoResponse, routing::get, Json, Router};
+mod db;
+mod routes;
+mod seed;
+
+use axum::{Router, routing::get};
+use sqlx::SqlitePool;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
-    // Load .env file if present.
     dotenvy::dotenv().ok();
 
-    // Initialize structured logging.
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -23,19 +24,45 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // TODO(phase-0): establish SQLx SQLite connection pool.
-    // let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:ludeme.db".to_string());
-    // let pool = sqlx::SqlitePool::connect(&database_url).await.expect("Failed to connect to SQLite");
+    // --- Database ----------------------------------------------------------
+    let database_url = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "sqlite:ludeme.db?mode=rwc".to_string());
 
-    // TODO(phase-0): run pending SQLx migrations.
-    // sqlx::migrate!("./migrations").run(&pool).await.expect("Migration failed");
+    let pool = SqlitePool::connect(&database_url)
+        .await
+        .expect("Failed to connect to SQLite");
 
-    // TODO(phase-0): seed taxonomy TOML files into the database.
+    // Enable WAL mode for better concurrent read performance
+    sqlx::query("PRAGMA journal_mode = WAL")
+        .execute(&pool)
+        .await
+        .expect("Failed to set WAL mode");
 
-    let app = Router::new().route("/health", get(health_handler));
+    sqlx::query("PRAGMA foreign_keys = ON")
+        .execute(&pool)
+        .await
+        .expect("Failed to enable foreign keys");
+
+    // Run any pending migrations
+    // Path is relative to crates/ludeme-server/ (the crate root where sqlx::migrate! runs)
+    sqlx::migrate!("../../migrations")
+        .run(&pool)
+        .await
+        .expect("Migration failed");
+
+    info!("Database ready");
+
+    // Seed taxonomy from TOML files (idempotent — safe to run every boot)
+    seed::seed_taxonomy(&pool).await.expect("Taxonomy seed failed");
+
+    // --- Routes ------------------------------------------------------------
+    let app = Router::new()
+        .route("/health", get(routes::health))
+        .nest("/api", routes::api_router())
+        .with_state(pool);
 
     let port = std::env::var("SERVER_PORT").unwrap_or_else(|_| "3000".to_string());
-    let addr = format!("0.0.0.0:{}", port);
+    let addr = format!("0.0.0.0:{port}");
 
     info!("ludeme-server listening on {}", addr);
 
@@ -46,8 +73,4 @@ async fn main() {
     axum::serve(listener, app)
         .await
         .expect("Server error");
-}
-
-async fn health_handler() -> impl IntoResponse {
-    Json(serde_json::json!({ "status": "ok", "service": "ludeme-server" }))
 }

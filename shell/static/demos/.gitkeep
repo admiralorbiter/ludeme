@@ -1,0 +1,13 @@
+# placeholder — compiled WASM demo packages live here.
+# Each demo is built to its own subdirectory, e.g.:
+#
+#   shell/static/demos/pong-76/
+#     pong_76.wasm        ← compiled WASM binary
+#     pong_76.js          ← wasm-bindgen JS glue
+#     pong_76_bg.wasm     ← (if split into bg module)
+#
+# Build a demo by running from the project root:
+#   .\build-demo.ps1 pong-76
+#
+# The shell loads these at runtime via dynamic import in ludeme-shell.ts.
+# Never commit compiled WASM — it's generated output.

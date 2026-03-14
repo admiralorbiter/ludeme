@@ -4,8 +4,8 @@
 	import { registerShellAPI, loadDemo, setParam } from '$lib/ludeme-shell.js';
 	import type { PageData } from './$types.js';
 
-	let { data }: { data: PageData } = $props();
-	const demo = data.demo;
+	let { data } = $props();
+	let demo = $derived(data.demo);
 
 	// Panel visibility
 	let showParamTuner  = $state(true);
@@ -14,7 +14,8 @@
 
 	// Bookmark form
 	let bookmarkLabel = $state('');
-	let bookmarkTags  = $state<string[]>([...demo.mechanic_tags]);
+	let bookmarkTags  = $state<string[]>([]);
+	$effect(() => { bookmarkTags = [...demo.mechanic_tags]; });
 
 	// Canvas ref for screenshot on bookmark
 	let canvasEl = $state<HTMLCanvasElement | null>(null);
