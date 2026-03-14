@@ -84,16 +84,23 @@ export async function loadDemo(wasmJsPath: string): Promise<void> {
 		// The .wasm binary is the sibling _bg.wasm file (wasm-bindgen naming convention)
 		const wasmBinaryPath = wasmJsPath.replace(/\.js$/, '_bg.wasm');
 
-		// Dynamically import the JS glue. It exports `default` which is the init() fn.
+		// Dynamically import the JS glue.
+		// wasm-bindgen exports `default` (the init fn) and `initSync`.
 		const glueModule = await import(/* @vite-ignore */ wasmJsPath);
 
-		if (typeof glueModule.default !== 'function') {
-			throw new Error('WASM glue module does not export a default init() function.');
+		// Find the init function — wasm-bindgen names it differently across versions
+		const initFn = glueModule.default ?? glueModule.__wbg_init ?? glueModule.init;
+
+		if (typeof initFn !== 'function') {
+			throw new Error(
+				'WASM glue module does not export an init function. ' +
+				`Found exports: [${Object.keys(glueModule).join(', ')}]`
+			);
 		}
 
 		// Pass the explicit .wasm path so the browser fetches the right binary.
-		// init() with no args uses a default URL that may not resolve correctly in Vite.
-		await glueModule.default({ module_or_path: wasmBinaryPath });
+		// Accept both object form and string form based on wasm-bindgen version.
+		await initFn(wasmBinaryPath);
 
 		// The WASM module's #[wasm_bindgen(start)] fn fires during init().
 		// It emits SessionStart which drives the session store into 'active'.

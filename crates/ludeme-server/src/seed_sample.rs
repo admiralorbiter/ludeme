@@ -21,6 +21,7 @@ const DEMO_PONG_76:        &str = "00000000-0000-4000-8000-000000000004";
 const EDGE_WORK_DEMO:      &str = "00000000-0000-4000-8000-000000000010";
 const EDGE_MECH1_DEMO:     &str = "00000000-0000-4000-8000-000000000011";
 const EDGE_MECH2_DEMO:     &str = "00000000-0000-4000-8000-000000000012";
+const COLLECTION_ORIGINS:  &str = "00000000-0000-4000-8000-000000000020";
 
 pub async fn seed_sample_slice(pool: &SqlitePool) -> anyhow::Result<()> {
     let mut count = 0usize;
@@ -92,7 +93,7 @@ pub async fn seed_sample_slice(pool: &SqlitePool) -> anyhow::Result<()> {
         tags,
         "faithful",
         "main",
-        "/demos/pong-76/pong_76.wasm",
+        "/demos/pong-76/pong_76.js",
         "Ball and paddle — the mechanic that started everything. No friction, no gravity beyond deflection angle and speed. The simplest complete mechanic system in the canon.",
         "1972",
         "Arcade",
@@ -103,6 +104,15 @@ pub async fn seed_sample_slice(pool: &SqlitePool) -> anyhow::Result<()> {
     .await?
     .rows_affected();
     count += r as usize;
+
+    // Ensure wasm_path is correct even if the row existed before this fix
+    let wasm_path = "/demos/pong-76/pong_76.js";
+    sqlx::query!(
+        "UPDATE playable_demos SET wasm_path = ? WHERE id = ? AND (wasm_path != ? OR wasm_path IS NULL)",
+        wasm_path, DEMO_PONG_76, wasm_path
+    )
+    .execute(pool)
+    .await?;
 
     // -- Edges -------------------------------------------------------------
     let r = sqlx::query!(
@@ -129,6 +139,21 @@ pub async fn seed_sample_slice(pool: &SqlitePool) -> anyhow::Result<()> {
         "INSERT OR IGNORE INTO relationship_edges (id, from_id, from_type, to_id, to_type, relation_type, confidence)
          VALUES (?, ?, ?, ?, ?, ?, ?)",
         EDGE_MECH2_DEMO, MECH_SCORE_THRESHOLD, "mechanic", DEMO_PONG_76, "demo", "demonstrated-in", "established"
+    )
+    .execute(pool)
+    .await?
+    .rows_affected();
+    count += r as usize;
+
+    // -- Collection: Origins of Bounce ----------------------------------------
+    let ordered = serde_json::json!([DEMO_PONG_76]).to_string();
+    let r = sqlx::query!(
+        "INSERT OR IGNORE INTO collections (id, title, learning_goal, ordered_items, publish_state)
+         VALUES (?, ?, ?, ?, 'public')",
+        COLLECTION_ORIGINS,
+        "Origins of Bounce",
+        "Trace how ball-and-paddle mechanics evolved from the first electronic game to modern physics engines.",
+        ordered
     )
     .execute(pool)
     .await?

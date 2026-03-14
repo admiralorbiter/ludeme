@@ -11,6 +11,12 @@
 	let showParamTuner  = $state(true);
 	let showStatePanel  = $state(true);
 	let showBookmarks   = $state(false);
+	let showPublish     = $state(true);
+
+	// Publish state management
+	let publishState = $state(demo.publish_state ?? 'draft');
+	let readiness = $state<{ready: boolean; checks: Array<{field: string; ok: boolean; message: string}>} | null>(null);
+	let publishLoading = $state(false);
 
 	// Bookmark form
 	let bookmarkLabel = $state('');
@@ -40,6 +46,9 @@
 			loadDemo(demo.wasm_path);
 		}
 		// If no wasm_path: session stays 'idle', canvas shows placeholder
+
+		// Load readiness checklist
+		fetchReadiness();
 	});
 
 	onDestroy(() => {
@@ -62,12 +71,48 @@
 		session.confirmBookmark(bookmarkLabel, bookmarkTags);
 		bookmarkLabel = '';
 	}
+
+	async function fetchReadiness() {
+		try {
+			const res = await fetch(`/api/readiness/demo/${demo.id}`);
+			if (res.ok) readiness = await res.json();
+		} catch { /* ignore */ }
+	}
+
+	async function transitionState(newState: string) {
+		publishLoading = true;
+		try {
+			const res = await fetch('/api/publish', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ entity_type: 'demo', id: demo.id, new_state: newState }),
+			});
+			if (res.ok) {
+				publishState = newState;
+				await fetchReadiness();
+			}
+		} catch { /* ignore */ }
+		publishLoading = false;
+	}
+
+	// Keyboard shortcuts: B = capture bookmark, Escape = dismiss
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+		if (e.key === 'b' || e.key === 'B') {
+			e.preventDefault();
+			session.captureBookmark();
+		} else if (e.key === 'Escape' && session.isPaused) {
+			session.dismissMoment();
+		}
+	}
 </script>
 
 <svelte:head>
 	<title>{demo.title} — Ludeme</title>
 	<meta name="description" content={demo.description ?? `Play and study the ${demo.title} mechanic demo.`} />
 </svelte:head>
+
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="play-shell">
 
@@ -179,6 +224,50 @@
 
 		<!-- ===================== Sidebar ===================== -->
 		<aside class="sidebar">
+
+			<!-- Publish state panel -->
+			<div class="panel">
+				<button
+					class="panel-header"
+					onclick={() => showPublish = !showPublish}
+					aria-expanded={showPublish}
+				>
+					<span>
+						<span class="publish-dot {publishState}"></span>
+						Publish
+					</span>
+					<span class="caret">{showPublish ? '▴' : '▾'}</span>
+				</button>
+				{#if showPublish}
+					<div class="panel-body">
+						<div class="publish-state-row">
+							<span class="publish-badge {publishState}">{publishState}</span>
+							{#if publishState === 'draft'}
+								<button class="publish-btn" disabled={publishLoading} onclick={() => transitionState('review')}>→ Review</button>
+							{:else if publishState === 'review'}
+								<button class="publish-btn" disabled={publishLoading || !(readiness?.ready)} onclick={() => transitionState('public')}>→ Public</button>
+								<button class="publish-btn-secondary" disabled={publishLoading} onclick={() => transitionState('draft')}>← Draft</button>
+							{:else}
+								<button class="publish-btn-secondary" disabled={publishLoading} onclick={() => transitionState('review')}>← Review</button>
+							{/if}
+						</div>
+
+						{#if readiness}
+							<div class="readiness-list">
+								{#each readiness.checks as check}
+									<div class="readiness-item" class:ok={check.ok} class:fail={!check.ok}>
+										<span class="readiness-icon">{check.ok ? '✓' : '✗'}</span>
+										<span class="readiness-label">{check.field}</span>
+										{#if !check.ok}
+											<span class="readiness-msg">{check.message}</span>
+										{/if}
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</div>
 
 			<!-- Param tuner panel -->
 			{#if session.paramManifest?.params.length}
@@ -714,6 +803,67 @@
 		flex-shrink: 0;
 	}
 	.bookmark-label { color: var(--text-secondary); }
+
+	/* Publish state */
+	.publish-dot {
+		display: inline-block;
+		width: 8px; height: 8px;
+		border-radius: 50%;
+		margin-right: var(--space-1);
+	}
+	.publish-dot.draft  { background: #ef4444; }
+	.publish-dot.review { background: #f59e0b; }
+	.publish-dot.public { background: #22c55e; }
+
+	.publish-state-row {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		flex-wrap: wrap;
+	}
+	.publish-badge {
+		font-size: 0.6875rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		padding: 2px 8px;
+		border-radius: 999px;
+	}
+	.publish-badge.draft  { color: #ef4444; background: rgba(239, 68, 68, 0.15); }
+	.publish-badge.review { color: #f59e0b; background: rgba(245, 158, 11, 0.15); }
+	.publish-badge.public { color: #22c55e; background: rgba(34, 197, 94, 0.15); }
+
+	.publish-btn, .publish-btn-secondary {
+		font-size: 0.6875rem;
+		font-weight: 500;
+		padding: 3px 10px;
+		border-radius: var(--radius-sm);
+		border: none;
+		cursor: pointer;
+		font-family: var(--font-sans);
+		transition: opacity 0.15s;
+	}
+	.publish-btn { background: var(--accent); color: #111; }
+	.publish-btn-secondary { background: rgba(255,255,255,0.08); color: #9391a8; }
+	.publish-btn:disabled, .publish-btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+	.readiness-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+		margin-top: var(--space-3);
+	}
+	.readiness-item {
+		display: flex;
+		align-items: baseline;
+		gap: var(--space-2);
+		font-size: 0.75rem;
+	}
+	.readiness-icon { font-weight: 700; flex-shrink: 0; }
+	.readiness-item.ok .readiness-icon { color: #22c55e; }
+	.readiness-item.fail .readiness-icon { color: #ef4444; }
+	.readiness-label { color: #9391a8; }
+	.readiness-msg { color: #ef4444; font-size: 0.6875rem; }
 
 	/* ---- Responsive ---- */
 	@media (max-width: 900px) {

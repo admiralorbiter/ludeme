@@ -60,6 +60,10 @@ async fn main() {
     // Seed the sample Pong slice (idempotent — proves the schema end-to-end)
     seed_sample::seed_sample_slice(&pool).await.expect("Sample slice seed failed");
 
+    // Rebuild FTS5 search index from current data
+    // (migration inserts happen before seeds, so we repopulate here)
+    rebuild_search_index(&pool).await;
+
     // --- Routes ------------------------------------------------------------
     let app = Router::new()
         .route("/health", get(routes::health))
@@ -78,4 +82,52 @@ async fn main() {
     axum::serve(listener, app)
         .await
         .expect("Server error");
+}
+
+/// Rebuild the FTS5 search index from current entity data.
+/// Safe to call on every boot — clears and repopulates.
+async fn rebuild_search_index(pool: &sqlx::SqlitePool) {
+    // Clear existing index content
+    let _ = sqlx::query("DELETE FROM search_index")
+        .execute(pool)
+        .await;
+
+    // Populate from playable_demos
+    let _ = sqlx::query(
+        "INSERT INTO search_index (entity_type, entity_id, title, body, tags)
+         SELECT 'demo', id, title, COALESCE(description, ''),
+                COALESCE(REPLACE(REPLACE(mechanic_tags, '\"', ''), ',', ' '), '')
+         FROM playable_demos"
+    )
+    .execute(pool)
+    .await;
+
+    // Populate from mechanics
+    let _ = sqlx::query(
+        "INSERT INTO search_index (entity_type, entity_id, title, body, tags)
+         SELECT 'mechanic', id, name, COALESCE(short_definition, ''), COALESCE(family, '')
+         FROM mechanics"
+    )
+    .execute(pool)
+    .await;
+
+    // Populate from works
+    let _ = sqlx::query(
+        "INSERT INTO search_index (entity_type, entity_id, title, body, tags)
+         SELECT 'work', id, title, COALESCE(significance, ''), COALESCE(platform, '')
+         FROM works"
+    )
+    .execute(pool)
+    .await;
+
+    // Populate from collections
+    let _ = sqlx::query(
+        "INSERT INTO search_index (entity_type, entity_id, title, body, tags)
+         SELECT 'collection', id, title, COALESCE(learning_goal, ''), ''
+         FROM collections"
+    )
+    .execute(pool)
+    .await;
+
+    info!("Search index rebuilt");
 }

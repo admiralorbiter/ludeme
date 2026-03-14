@@ -112,6 +112,10 @@ function createSessionStore() {
 				durationMs = 0;
 				currentStates = [];
 				status = 'active';
+				// Persist session on the server
+				if (demo) {
+					persistSession(demo.id, branchId, seed);
+				}
 				break;
 			}
 
@@ -201,10 +205,60 @@ function createSessionStore() {
 			frame: pendingMoment.frame,
 			player_label: label || null,
 			auto_tags: tags,
-			screenshot_url: null, // set after canvas capture
+			screenshot_url: null,
 		};
 		sessionBookmarks = [...sessionBookmarks, bookmark];
+		// Persist bookmark on the server
+		persistBookmark(bookmark);
 		dismissMoment();
+	}
+
+	/** Trigger an explicit bookmark capture — pauses the session */
+	function captureBookmark() {
+		if (status !== 'active' || recentMoments.length === 0) return;
+		// Grab the most recent auto-emitted moment as the basis
+		const latest = recentMoments[recentMoments.length - 1];
+		pendingMoment = {
+			...latest,
+			frame: frameCount,
+			player_label: null,
+			auto_tags: demo ? [...demo.mechanic_tags] : [],
+		};
+		status = 'paused';
+	}
+
+	// ---------------------------------------------------------------------------
+	// API persistence (fire-and-forget)
+	// ---------------------------------------------------------------------------
+
+	async function persistSession(demoId: string, branch: string, s: number) {
+		try {
+			await fetch('/api/sessions', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ demo_id: demoId, branch_id: branch, seed: s }),
+			});
+		} catch (e) {
+			console.warn('[session] Failed to persist session:', e);
+		}
+	}
+
+	async function persistBookmark(bm: MomentBookmark) {
+		try {
+			await fetch('/api/bookmarks', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					session_id:   bm.session_id,
+					demo_id:      bm.demo_id,
+					frame:        bm.frame,
+					player_label: bm.player_label,
+					auto_tags:    bm.auto_tags,
+				}),
+			});
+		} catch (e) {
+			console.warn('[session] Failed to persist bookmark:', e);
+		}
 	}
 
 	function reset() {
@@ -258,6 +312,7 @@ function createSessionStore() {
 		setError,
 		setParam,
 		dismissMoment,
+		captureBookmark,
 		confirmBookmark,
 		reset,
 	};

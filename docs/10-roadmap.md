@@ -64,11 +64,13 @@
 - [x] Play shell route exists with canvas embed and state machine overlay
 - [x] Session creation API endpoint
 - [x] Bookmark creation API endpoint
-- [ ] Demo Shell API contract: `SessionStart`, `SessionEnd`, `MomentEmit` events flowing from WASM to shell
-- [ ] Bookmark capture flow: shortcut → screenshot → moment form → saved bookmark
-- [ ] Collections: curated trails
-- [ ] Search: full-text across demo titles, mechanic names, work titles
-- [ ] Publish state management and release readiness checklist
+- [x] Demo Shell API contract: `SessionStart`, `SessionEnd`, `MomentEmit` events flowing from WASM to shell
+- [x] Discover page wired to live API (demos, mechanics, taxonomy families)
+- [x] Demo detail page wired to live API (UUID routing, WASM loading)
+- [x] Bookmark capture flow: shortcut → screenshot → moment form → saved to API
+- [x] Collections: curated trails
+- [x] Search: full-text across demo titles, mechanic names, work titles
+- [x] Publish state management and release readiness checklist
 - [ ] At least two more playable demos
 
 ---

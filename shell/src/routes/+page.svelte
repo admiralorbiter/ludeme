@@ -1,49 +1,11 @@
 <script lang="ts">
 	import { fly } from 'svelte/transition';
+	import type { PageData } from './$types.js';
 
-	// Static placeholder data — wired to API in Phase 1
-	const families = [
-		{ slug: 'movement',         label: 'Movement',            icon: '↑' },
-		{ slug: 'collision-response', label: 'Collision',          icon: '◈' },
-		{ slug: 'scoring-pressure', label: 'Scoring & Pressure',  icon: '▲' },
-		{ slug: 'state-transitions', label: 'State Transitions',  icon: '⬡' },
-		{ slug: 'economy',          label: 'Economy',             icon: '◎' },
-		{ slug: 'timing-windows',   label: 'Timing & Rhythm',     icon: '◷' },
-		{ slug: 'spatial-rules',    label: 'Spatial Rules',       icon: '⬛' },
-		{ slug: 'ai-behavior',      label: 'AI Behavior',         icon: '◉' },
-		{ slug: 'progression',      label: 'Progression',         icon: '▶' },
-		{ slug: 'information',      label: 'Information',         icon: '◌' },
-	];
+	let { data }: { data: PageData } = $props();
 
-	const demos = [
-		{
-			id: 'pong-76',
-			title: 'Pong',
-			era: '1972',
-			platform: 'Arcade',
-			mechanic_tags: ['collision-response', 'scoring-pressure'],
-			fidelity: 'faithful',
-			description: 'Ball and paddle — the mechanic that started everything. No friction, no gravity, just deflection angle and speed.',
-		},
-		{
-			id: 'maze-80',
-			title: 'Maze Chase',
-			era: '1980',
-			platform: 'Arcade',
-			mechanic_tags: ['ai-behavior', 'state-transitions'],
-			fidelity: 'interpreted',
-			description: 'Four distinct AI patterns operating simultaneously. Each ghost uses a different spatial algorithm to create combined pressure.',
-		},
-		{
-			id: 'jump-feel',
-			title: 'Jump Arc Study',
-			era: '1985',
-			platform: 'NES',
-			mechanic_tags: ['movement', 'timing-windows'],
-			fidelity: 'experimental',
-			description: 'Variable jump height controlled by hold duration. The feel that defined a decade of platformers — exposed and tunable.',
-		},
-	];
+	// Data from +page.server.ts (fetched from API)
+	const { families, demos } = data;
 
 	let activeFamily: string | null = $state(null);
 
