@@ -71,7 +71,7 @@
 - [x] Collections: curated trails
 - [x] Search: full-text across demo titles, mechanic names, work titles
 - [x] Publish state management and release readiness checklist
-- [ ] At least two more playable demos
+- [x] At least two more playable demos (maze-80, jump-feel)
 
 ---
 
@@ -96,6 +96,17 @@
 - Mechanic-to-compare flow (see [UX Flows](09-ux-flows.md)) works end-to-end
 
 **Exit criterion:** Every playable generates linked observations and every observation points back to evidence. A visitor can move from a demo to a mechanic page, to a comparison, and back to a playable in three jumps or fewer.
+
+**Progress:**
+
+- [x] Mechanic pages: list (`/mechanics`) grouped by family + detail (`/mechanics/[id]`) with definition, verbs, patterns, linked demos
+- [x] Work pages: list (`/works`) grouped by genre + detail (`/works/[id]`) with significance, linked mechanics, playable demos
+- [x] Breadcrumb and entity chip navigation: `Discover › Work Title › Demo Title`, clickable mechanic tags → `/mechanics/[id]`
+- [x] `ParamChange` event logging: migration 0003, `POST /api/param-changes`, shell fires on every slider change
+- [x] "Save as Experiment" flow: migration 0004 (`param_snapshot`), `POST/GET /api/experiments`, form in tuner panel
+- [x] Structured Observations: `POST/GET /api/observations`, panel in demo sidebar with confidence badges and form
+- [ ] Basic Comparison entity: static screenshot comparison with dimension notes
+- [ ] Shareable moment cards: screenshot + tags + deep link URL
 
 ---
 

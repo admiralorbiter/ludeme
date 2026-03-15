@@ -92,6 +92,8 @@ The server runs `sqlx::migrate!()` on startup, so after creating new migrations 
 **Migrations:**
 - `0001_initial.sql` — Core schema (all entity tables, taxonomy, sessions, bookmarks)
 - `0002_fts5_search.sql` — FTS5 full-text search index (demos, mechanics, works)
+- `0003_param_changes.sql` — ParamChange event log table
+- `0004_experiment_params.sql` — `param_snapshot` column on experiments
 
 ---
 
@@ -194,8 +196,10 @@ ludeme/
 │   │       ├── +page.svelte      # Discover/home page
 │   │       ├── +error.svelte     # Error boundary
 │   │       ├── demo/[id]/        # Demo play shell
-│   │       ├── mechanics/        # Stub (Phase 2)
-│   │       ├── works/            # Stub (Phase 2)
+│   │       ├── mechanics/        # Mechanic list + detail pages
+│   │       ├── mechanics/[id]/   # Mechanic detail page
+│   │       ├── works/            # Work list + detail pages
+│   │       ├── works/[id]/       # Work detail page
 │   │       └── collections/      # Collection list + detail (curated trails)
 │   └── static/
 │       └── demos/                # Compiled WASM outputs (gitignored)

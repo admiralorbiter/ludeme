@@ -16,6 +16,27 @@
 	let showBookmarks   = $state(false);
 	let showPublish     = $state(true);
 
+	// Experiment form
+	let showExperimentForm = $state(false);
+	let experimentHypothesis = $state('');
+	let experimentExpected = $state('');
+	let experimentSaving = $state(false);
+	let experimentSaved = $state(false);
+
+	// Observation form
+	let showObservations = $state(false);
+	let showObsForm = $state(false);
+	let obsClaim = $state('');
+	let obsConfidence = $state('tentative');
+	let obsWhy = $state('');
+	let obsFollowUp = $state('');
+	let obsSaving = $state(false);
+	let obsSaved = $state(false);
+	let savedObservations = $state<any[]>([]);
+
+	// Sidebar scroll
+	let sidebarEl = $state<HTMLElement | null>(null);
+
 	// Publish state management
 	let publishState = $state('draft');
 	let readiness = $state<{ready: boolean; checks: Array<{field: string; ok: boolean; message: string}>} | null>(null);
@@ -53,6 +74,26 @@
 
 		// Load readiness checklist
 		fetchReadiness();
+
+		// Load saved observations for this demo
+		loadObservations();
+
+		// Sidebar height management
+		function setSidebarHeight() {
+			if (!sidebarEl) return;
+			const top = sidebarEl.getBoundingClientRect().top;
+			sidebarEl.style.maxHeight = `${window.innerHeight - top - 24}px`;
+		}
+		setSidebarHeight();
+		window.addEventListener('resize', setSidebarHeight);
+		// Re-measure when sidebar content changes
+		const observer = new ResizeObserver(setSidebarHeight);
+		if (sidebarEl) observer.observe(sidebarEl);
+
+		return () => {
+			window.removeEventListener('resize', setSidebarHeight);
+			observer.disconnect();
+		};
 	});
 
 	onDestroy(() => {
@@ -65,6 +106,85 @@
 
 	function handleParamChange(key: string, value: number) {
 		setParam(key, value);
+	}
+
+	// ---------------------------------------------------------------------------
+	// Experiment save
+	// ---------------------------------------------------------------------------
+
+	async function saveExperiment() {
+		if (!experimentHypothesis.trim()) return;
+		experimentSaving = true;
+		try {
+			const snapshot: Record<string, number> = {};
+			if (session.paramManifest?.params) {
+				for (const p of session.paramManifest.params) {
+					snapshot[p.key] = session.paramValues[p.key] ?? p.default;
+				}
+			}
+			const res = await fetch(api('/experiments'), {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					parent_demo: demo.id,
+					hypothesis: experimentHypothesis.trim(),
+					expected_effect: experimentExpected.trim() || null,
+					param_snapshot: snapshot,
+				}),
+			});
+			if (res.ok) {
+				experimentSaved = true;
+				setTimeout(() => {
+					experimentSaved = false;
+					showExperimentForm = false;
+					experimentHypothesis = '';
+					experimentExpected = '';
+				}, 2000);
+			}
+		} catch { /* ignore */ }
+		experimentSaving = false;
+	}
+
+	// ---------------------------------------------------------------------------
+	// Observations
+	// ---------------------------------------------------------------------------
+
+	async function loadObservations() {
+		try {
+			const res = await fetch(api(`/observations?demo_id=${demo.id}`));
+			if (res.ok) savedObservations = await res.json();
+		} catch { /* ignore */ }
+	}
+
+	async function saveObservation() {
+		if (!obsClaim.trim()) return;
+		obsSaving = true;
+		try {
+			const res = await fetch(api('/observations'), {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					claim: obsClaim.trim(),
+					linked_entities: [{ id: demo.id, type: 'demo' }],
+					confidence: obsConfidence,
+					why_it_matters: obsWhy.trim() || null,
+					follow_up_question: obsFollowUp.trim() || null,
+				}),
+			});
+			if (res.ok) {
+				obsSaved = true;
+				await loadObservations();
+				setTimeout(() => {
+					obsSaved = false;
+					showObsForm = false;
+					obsClaim = '';
+					obsWhy = '';
+					obsFollowUp = '';
+					obsConfidence = 'tentative';
+				}, 2000);
+			}
+		} catch { /* ignore */ }
+		obsSaving = false;
 	}
 
 	// ---------------------------------------------------------------------------
@@ -236,7 +356,7 @@
 		</div>
 
 		<!-- ===================== Sidebar ===================== -->
-		<aside class="sidebar">
+		<aside class="sidebar" bind:this={sidebarEl}>
 
 			<!-- Publish state panel -->
 			<div class="panel">
@@ -325,6 +445,50 @@
 									{/if}
 								</div>
 							{/each}
+
+							<!-- Save as experiment -->
+							{#if !showExperimentForm}
+								<button class="experiment-trigger" onclick={() => showExperimentForm = true}>
+									🧪 Save as experiment
+								</button>
+							{:else}
+								<div class="experiment-form">
+									<h4 class="experiment-title">🧪 New experiment</h4>
+									<input
+										type="text"
+										class="input"
+										placeholder="What's your hypothesis?"
+										bind:value={experimentHypothesis}
+									/>
+									<input
+										type="text"
+										class="input"
+										placeholder="Expected effect (optional)"
+										bind:value={experimentExpected}
+									/>
+									<div class="experiment-params-preview">
+										<span class="preview-label">Snapshot:</span>
+										{#each session.paramManifest.params as p}
+											<span class="preview-item">{p.label} = {session.paramValues[p.key]?.toFixed(p.kind === 'float' ? 2 : 0) ?? p.default}</span>
+										{/each}
+									</div>
+									<div class="experiment-actions">
+										{#if experimentSaved}
+											<span class="experiment-success">✓ Saved!</span>
+										{:else}
+											<button
+												class="btn btn-primary btn-sm"
+												disabled={experimentSaving || !experimentHypothesis.trim()}
+												onclick={saveExperiment}
+											>Save</button>
+											<button
+												class="btn btn-ghost btn-sm"
+												onclick={() => showExperimentForm = false}
+											>Cancel</button>
+										{/if}
+									</div>
+								</div>
+							{/if}
 						</div>
 					{/if}
 				</div>
@@ -446,6 +610,94 @@
 				</div>
 			{/if}
 
+			<!-- Observations panel -->
+			<div class="panel">
+				<button
+					class="panel-header"
+					onclick={() => showObservations = !showObservations}
+					aria-expanded={showObservations}
+				>
+					<span class="panel-title">
+						📝 Observations
+						{#if savedObservations.length}
+							<span class="panel-badge">{savedObservations.length}</span>
+						{/if}
+					</span>
+					<span class="panel-toggle">{showObservations ? '▲' : '▼'}</span>
+				</button>
+				{#if showObservations}
+					<div class="panel-body">
+						<!-- Saved observations -->
+						{#each savedObservations as obs}
+							<div class="obs-card">
+								<div class="obs-header">
+									<span class="obs-confidence {obs.confidence}">{obs.confidence}</span>
+								</div>
+								<p class="obs-claim">{obs.claim}</p>
+								{#if obs.why_it_matters}
+									<p class="obs-why">{obs.why_it_matters}</p>
+								{/if}
+								{#if obs.follow_up_question}
+									<p class="obs-followup">❓ {obs.follow_up_question}</p>
+								{/if}
+							</div>
+						{/each}
+
+						<!-- New observation form -->
+						{#if !showObsForm}
+							<button class="experiment-trigger" onclick={() => showObsForm = true}>
+								+ New observation
+							</button>
+						{:else}
+							<div class="obs-form">
+								<input
+									type="text"
+									class="input"
+									placeholder="What did you observe?"
+									bind:value={obsClaim}
+								/>
+								<div class="obs-confidence-row">
+									<span class="obs-field-label">Confidence</span>
+									<select class="obs-select" bind:value={obsConfidence}>
+										<option value="speculative">Speculative</option>
+										<option value="tentative">Tentative</option>
+										<option value="supported">Supported</option>
+										<option value="established">Established</option>
+									</select>
+								</div>
+								<input
+									type="text"
+									class="input"
+									placeholder="Why does this matter? (optional)"
+									bind:value={obsWhy}
+								/>
+								<input
+									type="text"
+									class="input"
+									placeholder="Follow-up question? (optional)"
+									bind:value={obsFollowUp}
+								/>
+								<div class="experiment-actions">
+									{#if obsSaved}
+										<span class="experiment-success">✓ Saved!</span>
+									{:else}
+										<button
+											class="btn btn-primary btn-sm"
+											disabled={obsSaving || !obsClaim.trim()}
+											onclick={saveObservation}
+										>Save</button>
+										<button
+											class="btn btn-ghost btn-sm"
+											onclick={() => showObsForm = false}
+										>Cancel</button>
+									{/if}
+								</div>
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</div>
+
 		</aside>
 	</div>
 </div>
@@ -493,6 +745,7 @@
 	.play-area {
 		display: grid;
 		grid-template-columns: 1fr 300px;
+		grid-template-rows: 1fr;
 		gap: var(--space-6);
 		padding: var(--space-6);
 		flex: 1;
@@ -500,7 +753,28 @@
 		width: 100%;
 		margin: 0 auto;
 		align-items: start;
+		max-height: calc(100vh - var(--nav-height));
 	}
+
+	/* ---- Sidebar ---- */
+	.sidebar {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+		min-height: 0;
+		max-height: calc(100vh - var(--nav-height) - var(--space-12));
+		overflow-y: auto;
+		padding-bottom: var(--space-6);
+		scrollbar-width: thin;
+		scrollbar-color: rgba(255,255,255,0.15) transparent;
+	}
+	.sidebar::-webkit-scrollbar { width: 4px; }
+	.sidebar::-webkit-scrollbar-track { background: transparent; }
+	.sidebar::-webkit-scrollbar-thumb {
+		background: rgba(255,255,255,0.15);
+		border-radius: 2px;
+	}
+	.sidebar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
 
 	/* ---- Canvas column ---- */
 	.canvas-col {
@@ -800,6 +1074,141 @@
 		display: flex;
 		gap: var(--space-2);
 		flex-wrap: wrap;
+	}
+
+	/* Experiment form */
+	.experiment-trigger {
+		width: 100%;
+		padding: var(--space-2) var(--space-3);
+		background: rgba(255,255,255,0.03);
+		border: 1px dashed var(--border);
+		border-radius: var(--radius-md);
+		color: var(--text-secondary);
+		font-size: 0.8125rem;
+		cursor: pointer;
+		transition: all var(--duration-fast) var(--ease);
+		margin-top: var(--space-2);
+	}
+	.experiment-trigger:hover {
+		border-color: var(--accent-dim);
+		color: var(--accent);
+		background: rgba(255,255,255,0.05);
+	}
+	.experiment-form {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
+		padding: var(--space-3);
+		background: rgba(255,255,255,0.03);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		margin-top: var(--space-2);
+	}
+	.experiment-title {
+		font-size: 0.8125rem;
+		font-weight: 600;
+		color: var(--text-primary);
+	}
+	.experiment-params-preview {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-1);
+		font-size: 0.6875rem;
+	}
+	.preview-label {
+		color: var(--text-muted);
+		font-weight: 600;
+		width: 100%;
+		margin-bottom: 2px;
+	}
+	.preview-item {
+		padding: 1px 5px;
+		background: var(--bg-subtle);
+		border: 1px solid var(--border);
+		border-radius: 3px;
+		color: var(--text-secondary);
+		font-family: var(--font-mono);
+	}
+	.experiment-actions {
+		display: flex;
+		gap: var(--space-2);
+		align-items: center;
+	}
+	.experiment-success {
+		font-size: 0.8125rem;
+		color: #22c55e;
+		font-weight: 600;
+	}
+	.btn-sm {
+		font-size: 0.75rem;
+		padding: var(--space-1) var(--space-3);
+	}
+
+	/* Observations */
+	.obs-card {
+		padding: var(--space-3);
+		background: rgba(255,255,255,0.03);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+	.obs-header { display: flex; align-items: center; }
+	.obs-confidence {
+		font-size: 0.625rem;
+		padding: 2px 6px;
+		border-radius: 999px;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		font-weight: 500;
+		border: 1px solid;
+	}
+	.obs-confidence.speculative { border-color: #ef444440; color: #ef4444; }
+	.obs-confidence.tentative   { border-color: #f59e0b40; color: #f59e0b; }
+	.obs-confidence.supported   { border-color: #3b82f640; color: #3b82f6; }
+	.obs-confidence.established { border-color: #22c55e40; color: #22c55e; }
+	.obs-claim {
+		font-size: 0.8125rem;
+		color: var(--text-primary);
+		line-height: 1.5;
+	}
+	.obs-why {
+		font-size: 0.75rem;
+		color: var(--text-secondary);
+		font-style: italic;
+	}
+	.obs-followup {
+		font-size: 0.75rem;
+		color: var(--accent);
+	}
+	.obs-form {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
+		padding: var(--space-3);
+		background: rgba(255,255,255,0.03);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+	}
+	.obs-confidence-row {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+	.obs-field-label {
+		font-size: 0.75rem;
+		color: var(--text-muted);
+		font-weight: 500;
+	}
+	.obs-select {
+		flex: 1;
+		background: var(--bg-subtle);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-sm);
+		color: var(--text-primary);
+		font-size: 0.75rem;
+		padding: var(--space-1) var(--space-2);
 	}
 
 	/* Bookmarks */

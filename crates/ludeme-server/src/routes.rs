@@ -57,6 +57,13 @@ pub fn api_router() -> Router<SqlitePool> {
         .route("/sessions",      post(create_session))
         // Bookmarks
         .route("/bookmarks",     post(create_bookmark))
+        // Param changes
+        .route("/param-changes", post(create_param_change).get(list_param_changes))
+        // Experiments
+        .route("/experiments",   post(create_experiment).get(list_experiments))
+        .route("/experiments/{id}", get(get_experiment))
+        // Observations
+        .route("/observations",  post(create_observation).get(list_observations))
         // Search
         .route("/search",        get(search))
         // Collections
@@ -490,8 +497,263 @@ async fn create_bookmark(
 }
 
 // ---------------------------------------------------------------------------
-// Search handler (FTS5)
+// Param change handler
 // ---------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+pub struct CreateParamChangeBody {
+    pub session_id: Option<String>,
+    pub demo_id:    String,
+    pub frame:      i64,
+    pub param_key:  String,
+    pub old_value:  Option<f64>,
+    pub new_value:  f64,
+}
+
+async fn create_param_change(
+    State(pool): State<SqlitePool>,
+    Json(body): Json<CreateParamChangeBody>,
+) -> Result<impl IntoResponse, AppError> {
+    let id = uuid::Uuid::new_v4().to_string();
+
+    sqlx::query(
+        "INSERT INTO param_changes (id, session_id, demo_id, frame, param_key, old_value, new_value)
+         VALUES (?, ?, ?, ?, ?, ?, ?)"
+    )
+    .bind(&id)
+    .bind(&body.session_id)
+    .bind(&body.demo_id)
+    .bind(body.frame)
+    .bind(&body.param_key)
+    .bind(body.old_value)
+    .bind(body.new_value)
+    .execute(&pool)
+    .await?;
+
+    Ok((StatusCode::CREATED, Json(serde_json::json!({ "id": id }))))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ParamChangeQuery {
+    pub demo_id:    Option<String>,
+    pub session_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct ParamChangeRow {
+    pub id:         String,
+    pub session_id: Option<String>,
+    pub demo_id:    String,
+    pub frame:      i64,
+    pub param_key:  String,
+    pub old_value:  Option<f64>,
+    pub new_value:  f64,
+    pub created_at: String,
+}
+
+async fn list_param_changes(
+    State(pool): State<SqlitePool>,
+    Query(q): Query<ParamChangeQuery>,
+) -> Result<impl IntoResponse, AppError> {
+    let rows = if let Some(sid) = q.session_id {
+        sqlx::query_as::<_, ParamChangeRow>(
+            "SELECT * FROM param_changes WHERE session_id = ? ORDER BY frame ASC"
+        )
+        .bind(sid)
+        .fetch_all(&pool)
+        .await?
+    } else if let Some(did) = q.demo_id {
+        sqlx::query_as::<_, ParamChangeRow>(
+            "SELECT * FROM param_changes WHERE demo_id = ? ORDER BY created_at DESC LIMIT 50"
+        )
+        .bind(did)
+        .fetch_all(&pool)
+        .await?
+    } else {
+        sqlx::query_as::<_, ParamChangeRow>(
+            "SELECT * FROM param_changes ORDER BY created_at DESC LIMIT 50"
+        )
+        .fetch_all(&pool)
+        .await?
+    };
+
+    Ok(Json(rows))
+}
+
+// ---------------------------------------------------------------------------
+// Experiment handlers
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+pub struct CreateExperimentBody {
+    pub parent_demo:     String,
+    pub hypothesis:      String,
+    pub expected_effect: Option<String>,
+    pub param_snapshot:  Option<serde_json::Value>,
+}
+
+async fn create_experiment(
+    State(pool): State<SqlitePool>,
+    Json(body): Json<CreateExperimentBody>,
+) -> Result<impl IntoResponse, AppError> {
+    let id = uuid::Uuid::new_v4().to_string();
+    let snapshot = body.param_snapshot.map(|v| v.to_string());
+
+    sqlx::query(
+        "INSERT INTO experiments (id, parent_demo, hypothesis, expected_effect, param_snapshot)
+         VALUES (?, ?, ?, ?, ?)"
+    )
+    .bind(&id)
+    .bind(&body.parent_demo)
+    .bind(&body.hypothesis)
+    .bind(&body.expected_effect)
+    .bind(&snapshot)
+    .execute(&pool)
+    .await?;
+
+    Ok((StatusCode::CREATED, Json(serde_json::json!({ "id": id }))))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ExperimentQuery {
+    pub demo_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct ExperimentRow {
+    pub id:              String,
+    pub parent_demo:     String,
+    pub hypothesis:      String,
+    pub expected_effect: Option<String>,
+    pub observed_result: Option<String>,
+    pub decision:        Option<String>,
+    pub param_snapshot:  Option<String>,
+    pub publish_state:   String,
+    pub created_at:      String,
+    pub updated_at:      String,
+}
+
+async fn list_experiments(
+    State(pool): State<SqlitePool>,
+    Query(q): Query<ExperimentQuery>,
+) -> Result<impl IntoResponse, AppError> {
+    let rows = if let Some(did) = q.demo_id {
+        sqlx::query_as::<_, ExperimentRow>(
+            "SELECT * FROM experiments WHERE parent_demo = ? ORDER BY created_at DESC"
+        )
+        .bind(did)
+        .fetch_all(&pool)
+        .await?
+    } else {
+        sqlx::query_as::<_, ExperimentRow>(
+            "SELECT * FROM experiments ORDER BY created_at DESC LIMIT 50"
+        )
+        .fetch_all(&pool)
+        .await?
+    };
+
+    Ok(Json(rows))
+}
+
+async fn get_experiment(
+    State(pool): State<SqlitePool>,
+    Path(id): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    let row = sqlx::query_as::<_, ExperimentRow>(
+        "SELECT * FROM experiments WHERE id = ?"
+    )
+    .bind(&id)
+    .fetch_optional(&pool)
+    .await?
+    .ok_or(AppError::NotFound("Experiment not found".to_string()))?;
+
+    Ok(Json(row))
+}
+
+// ---------------------------------------------------------------------------
+// Observation handlers
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+pub struct CreateObservationBody {
+    pub claim:              String,
+    pub evidence_links:     Option<Vec<String>>,
+    pub linked_entities:    Option<Vec<serde_json::Value>>,
+    pub confidence:         Option<String>,
+    pub why_it_matters:     Option<String>,
+    pub follow_up_question: Option<String>,
+}
+
+async fn create_observation(
+    State(pool): State<SqlitePool>,
+    Json(body): Json<CreateObservationBody>,
+) -> Result<impl IntoResponse, AppError> {
+    let id = uuid::Uuid::new_v4().to_string();
+    let evidence = serde_json::to_string(&body.evidence_links.unwrap_or_default())
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let entities = serde_json::to_string(&body.linked_entities.unwrap_or_default())
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let confidence = body.confidence.unwrap_or_else(|| "tentative".to_string());
+
+    sqlx::query(
+        "INSERT INTO observations (id, claim, evidence_links, linked_entities, confidence, why_it_matters, follow_up_question)
+         VALUES (?, ?, ?, ?, ?, ?, ?)"
+    )
+    .bind(&id)
+    .bind(&body.claim)
+    .bind(&evidence)
+    .bind(&entities)
+    .bind(&confidence)
+    .bind(&body.why_it_matters)
+    .bind(&body.follow_up_question)
+    .execute(&pool)
+    .await?;
+
+    Ok((StatusCode::CREATED, Json(serde_json::json!({ "id": id }))))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ObservationQuery {
+    pub demo_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct ObservationRow {
+    pub id:                 String,
+    pub claim:              String,
+    pub evidence_links:     String,
+    pub linked_entities:    String,
+    pub confidence:         String,
+    pub why_it_matters:     Option<String>,
+    pub follow_up_question: Option<String>,
+    pub publish_state:      String,
+    pub created_at:         String,
+    pub updated_at:         String,
+}
+
+async fn list_observations(
+    State(pool): State<SqlitePool>,
+    Query(q): Query<ObservationQuery>,
+) -> Result<impl IntoResponse, AppError> {
+    let rows = if let Some(did) = q.demo_id {
+        // Find observations whose linked_entities JSON contains this demo_id
+        let pattern = format!("%{}%", did);
+        sqlx::query_as::<_, ObservationRow>(
+            "SELECT * FROM observations WHERE linked_entities LIKE ? ORDER BY created_at DESC"
+        )
+        .bind(pattern)
+        .fetch_all(&pool)
+        .await?
+    } else {
+        sqlx::query_as::<_, ObservationRow>(
+            "SELECT * FROM observations ORDER BY created_at DESC LIMIT 50"
+        )
+        .fetch_all(&pool)
+        .await?
+    };
+
+    Ok(Json(rows))
+}
 
 #[derive(Debug, Deserialize)]
 pub struct SearchQuery {

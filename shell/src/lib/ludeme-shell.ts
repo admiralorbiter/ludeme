@@ -117,16 +117,36 @@ export async function loadDemo(wasmJsPath: string): Promise<void> {
 	}
 }
 
+import { api } from './api.js';
+
 // ---------------------------------------------------------------------------
 // Set a param value (called by the param tuner UI)
 // Updates both the internal registry and the session store
 // ---------------------------------------------------------------------------
 
 export function setParam(key: string, value: number): void {
+	const oldValue = _params[key] ?? null;
 	_params[key] = value;
 	session.setParam(key, value);
 
 	if (window.__ludeme_set_param) {
 		window.__ludeme_set_param(key, value);
+	}
+
+	// Log param change to API (fire-and-forget)
+	const demo = session.demo;
+	if (demo) {
+		fetch(api('/param-changes'), {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				demo_id:   demo.id,
+				session_id: session.sessionId ?? null,
+				frame:     session.frameCount,
+				param_key: key,
+				old_value: oldValue,
+				new_value: value,
+			}),
+		}).catch(() => { /* ignore network errors */ });
 	}
 }
