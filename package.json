@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "concurrently --names \"api,shell\" --prefix-colors \"cyan,magenta\" \"cargo run -p ludeme-server\" \"npm run dev --prefix shell\"",
     "build": "npm run build --prefix shell",
+    "build-demos": "powershell -NonInteractive -File build-demo.ps1 jump-feel && powershell -NonInteractive -File build-demo.ps1 maze-80 && powershell -NonInteractive -File build-demo.ps1 pong-76",
     "preview": "npm run preview --prefix shell",
     "check": "npm run check --prefix shell"
   },

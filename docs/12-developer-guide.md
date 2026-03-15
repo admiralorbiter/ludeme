@@ -37,7 +37,10 @@ Copy-Item .env.example .env
 # 5. Run migrations (creates ludeme.db automatically)
 $env:DATABASE_URL="sqlite://ludeme.db?mode=rwc"; sqlx migrate run
 
-# 6. Start dev servers
+# 6. Build all demo WASM crates (only needed once — skipped automatically if already built)
+npm run build-demos
+
+# 7. Start dev servers
 npm run dev
 ```
 
@@ -97,25 +100,31 @@ The server runs `sqlx::migrate!()` on startup, so after creating new migrations 
 
 ---
 
-## Building a demo crate (WASM)
+## Building demo crates (WASM)
 
 ```powershell
-# Build and package a demo crate for the shell
-# Run from the project root
+# Build ALL demos in one shot (safe to re-run — skips already-built crates)
+npm run build-demos
+
+# Build a single demo crate
+.\build-demo.ps1 jump-feel
+.\build-demo.ps1 maze-80
 .\build-demo.ps1 pong-76
-
-# This:
-# 1. Runs: cargo build -p pong-76 --target wasm32-unknown-unknown --release
-# 2. Runs: wasm-bindgen ... --out-dir shell/static/demos/pong-76 --target web
-# 3. Reports output file sizes
 ```
 
-After building, set `wasm_path` in `+page.server.ts` for that demo:
-```ts
-wasm_path: '/demos/pong-76/pong_76.wasm',
+`build-demo.ps1` is **idempotent**: if `shell/static/demos/<name>/<name>.js` already exists it prints a skip message and exits immediately. To force a rebuild, delete the output directory first:
+
+```powershell
+Remove-Item -Recurse shell/static/demos/jump-feel
+.\build-demo.ps1 jump-feel
 ```
 
-Compiled WASM files live in `shell/static/demos/<id>/` and are gitignored.
+Each script:
+1. Compiles: `cargo build -p <demo> --target wasm32-unknown-unknown --release`
+2. Generates JS glue: `wasm-bindgen ... --out-dir shell/static/demos/<demo> --target web`
+3. Reports output file sizes
+
+Compiled WASM files live in `shell/static/demos/<id>/` and are **gitignored** — you must build them locally after every fresh clone or pull that adds a new demo.
 
 ---
 

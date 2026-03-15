@@ -60,6 +60,16 @@ if (-not $wbCmd) {
 
 Write-Host ""
 
+# ── Idempotent skip ─────────────────────────────────────────────────
+
+$JsOutput = "$OutDir/$($CrateName).js"
+if (Test-Path $JsOutput) {
+    Write-Host "  ✓ Already built — $JsOutput exists, skipping." -ForegroundColor DarkGray
+    Write-Host "  (Delete $OutDir to force a rebuild.)"
+    Write-Host ""
+    exit 0
+}
+
 # ── Build ────────────────────────────────────────────────────────────
 
 # Check crate exists
